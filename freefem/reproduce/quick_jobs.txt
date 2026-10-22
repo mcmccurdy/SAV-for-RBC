@@ -1,0 +1,6 @@
+# Quick check (about a minute): five short runs from runs.txt, compared with the logs behind the paper in reference/quick/.
+FreeFem++-nw nsb.edp -Ra 1700 -k 3.1163 -l 1e6 -gy 0 -nx 24 -ny 24 -dt 0.01 -tend 2 -every 1 -out rigid2/N24_Ra1700.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.05 -tend 0.5 -save mms/rT_N40_dt0.05.dat -out mms/rT_N40_dt0.05.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -out decay/A1_dt1e-2.txt
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -l 1e6 -gy 0 -nx 16 -ny 16 2>/dev/null | grep "^RAC" > eig/rg_rac_N16.txt
+FreeFem++-nw nsb.edp -mms 1 -Lx 6.283185307179586 -y0 -1 -y1 1 -nu 0.1 -kap 0.05 -G 1 -l 1 -Tb 1 -Tt 0 -Tref 0.5 -tend 0.5 -nx 8 -ny 8 -dt 2.5e-4 -out space/s8_dt2.5e-4.txt

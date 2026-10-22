@@ -1,0 +1,3 @@
+# FreeFem++ nsb.edp  Ra=1000 k=2.22144 nx=40 ny=40 dt=0.05 l=1 C=1 A=1 eta=0.95
+# step t Qtilde Q Ekin Etheta Nu_bottom Nu_top
+# MMS dt, Linf u p T, L2 u p T, |Q~-1|, |Q-1|: 0.05 0.00133181380467 0.00216123702911 0.00250554938088 0.00239462752971 0.00308577182961 0.00356222623524 3.20475014526e-07 0

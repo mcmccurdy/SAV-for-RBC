@@ -1,0 +1,132 @@
+// eig.edp -- linear stability of the conduction state by a direct eigenvalue solve (independent of the time stepping).
+/*
+
+Linearized Boussinesq equations about u = 0, T = T_c(y), in one wavelength L = 2 pi/k, periodic in x:
+
+   sigma u = nu Lap u - grad p + G theta e_y,
+   div u = 0,
+   sigma theta = kap Lap theta - T_c' u_y
+
+ with: theta = 0 & u_y = 0 on the walls,
+and
+ either the Navier condition l u_x + nu d_n u_x = 0 (natural) or u_x = 0 (-noslip 1).
+
+ Same Taylor-Hood spaces (P2/P1, P2 temperature) and meshes as nsb.edp.
+
+ Generalized eigenproblem: A x = sigma B x
+  (B = mass of u and theta, zero on p),
+  shift-invert about -shift (target, default 0.5);
+  prints the real eigenvalue of largest part.
+
+  With -rac 1, it finds the zero of sigma(Ra) by the secant method.
+
+usage: FreeFem++-nw eig.edp -Ra 1700 -k 3.1163 -l 1e6 -gy 0 -nx 48 -ny 48 [-noslip 1] [-rac 1]
+
+*/
+
+func real argr(string key, real def) {
+  for (int i = 0; i < ARGV.n - 1; i++)
+  if (ARGV[i] == key)
+  return atof(ARGV[i+1]);
+  return def;
+}
+
+func int argi(string key, int def) {
+  for (int i = 0; i < ARGV.n - 1; i++)
+  if (ARGV[i] == key)
+  return atoi(ARGV[i+1]);
+  return def;
+}
+
+verbosity = 0;
+
+real Ra = argr("-Ra", 1000.);
+real kx = argr("-k", pi/sqrt(2.));
+real lslip = argr("-l", 0.);
+real nu = argr("-nu", 1.);
+real kap = argr("-kap", 1.);
+real shift = argr("-shift", 0.5); // target of the shift-invert iteration
+int nx = argi("-nx", 32);
+int ny = argi("-ny", 32);
+int gy = argi("-gy", 1);
+int noslip = argi("-noslip", 0);
+int rac = argi("-rac", 0);
+int nev = argi("-nev", 4);
+
+// T_b = 1, T_t = 0: T_c' = -1; G = Ra nu kap
+real H = 1.;
+real L = 2*pi/kx;
+real Tcp = -1.;
+
+mesh Th = square(nx, ny, [L*x, H*y]);
+
+if (gy != 1)
+  Th = square(nx, ny, [L*x, H*0.5*(1 - cos(pi*y))]);
+
+fespace Xh(Th, [P2, P2, P1, P2], periodic=[[2, y], [4, y]]);
+// FreeFem convention: EigenValue(OP, B, sigma=tgt)
+//    with OP = A - tgt B returns the eigenvalues lambda of A x = lambda B x
+//    nearest to tgt. Here lambda is the growth rate sigma itself.
+
+macro opL(G) (- nu*(dx(ux)*dx(vx) + dy(ux)*dy(vx) + dx(uy)*dx(vy) + dy(uy)*dy(vy)) + p*(dx(vx) + dy(vy)) + q*(dx(ux) + dy(uy))
+          + G*th*vy - kap*(dx(th)*dx(s) + dy(th)*dy(s)) - Tcp*uy*s - 1e-10*p*q - shift*(ux*vx + uy*vy + th*s)) //
+
+func real leading(real RaIn) {
+
+    real G = RaIn*nu*kap;
+
+    matrix OP;
+
+    if (noslip) {
+      varf vd([ux, uy, p, th], [vx, vy, q, s]) = int2d(Th)(opL(G)) + on(1, 3, ux = 0, uy = 0, th = 0); OP = vd(Xh, Xh, solver=sparsesolver);
+    }
+    else {
+      varf vn([ux, uy, p, th], [vx, vy, q, s]) = int2d(Th)(opL(G)) - int1d(Th, 1, 3)(lslip*ux*vx) + on(1, 3, uy = 0, th = 0);
+      OP = vn(Xh, Xh, solver=sparsesolver);
+    }
+
+    varf vb([ux, uy, p, th], [vx, vy, q, s]) = int2d(Th)(ux*vx + uy*vy + th*s);
+    matrix B = vb(Xh, Xh);
+
+    real[int] ev(nev), evi(nev);
+
+    Xh[int] [eux, euy, ep, eth](nev);
+
+    int nconv = EigenValue(OP, B, sym=false, sigma=shift, value=ev, ivalue=evi, vector=eux, tol=1e-13, maxit=0, ncv=0);
+
+    // skip modes without temperature:
+    // with free-slip walls a uniform horizontal flow is neutral (sigma = 0) for every Ra
+    real best = -1e300;
+    for (int i = 0; i < min(nconv, nev); i++) {
+        real nt = int2d(Th)(eth[i]^2);
+        real nu2 = int2d(Th)(eux[i]^2 + euy[i]^2);
+        if (abs(evi[i]) < 1e-8*max(1., abs(ev[i])) && nt > 1e-12*nu2 && ev[i] > best)
+          best = ev[i]
+          ;
+    }
+    return best;
+}
+if (!rac) {
+    real sg = leading(Ra);
+    cout.precision(12);
+    cout << "EIG Ra= " << Ra << " k= " << kx << " l= " << lslip << " noslip= " << noslip << " nx= " << nx << " ny= " << ny
+         << " sigma= " << sg << endl;
+} else {
+    real r0 = argr("-Ra0", 1650.);
+    real r1 = argr("-Ra1", 1750.);
+    real s0 = leading(r0);
+    real s1 = leading(r1);
+
+    for (int it = 0; it < 30 && abs(r1 - r0) > 1e-9*r1; it++) {
+      real r2 = r1 - s1*(r1 - r0)/(s1 - s0);
+      r0 = r1;
+      s0 = s1;
+      r1 = r2;
+      s1 = leading(r1);
+    }
+
+    cout.precision(12);
+
+    cout << "RAC k= " << kx << " l= " << lslip << " noslip= " << noslip << " nx= " << nx << " ny= " << ny << " Ra_c= " << r1
+         << " sigma= " << s1 << endl;
+}

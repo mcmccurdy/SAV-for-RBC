@@ -1,0 +1,935 @@
+/*
+
+ nsb3d.edp -- three-dimensional version of nsb.edp, FreeFem++ code for the scheme from
+"A second-order linear decoupled scheme with a relaxed zero-energy variable for
+ Rayleigh-Benard convection"
+
+//
+
+  BDF2 in time (backward Euler for the first step),
+  extrapolated nonlinear terms and buoyancy,
+  zero-energy variable Q with weight C,
+  rotational pressure correction,
+  relaxation of Q,
+  Navier slip walls on both tangential components u_x, u_z (l = 0 free slip, l large ~ no slip),
+  T = conduction profile T_c(y) + perturbation theta.
+
+//
+
+Space: P2 velocity and temperature,
+       P1 pressure (Taylor-Hood),
+       box [0,Lx) x (0,H) x [0,Lz),
+       periodic in x and z,
+       walls y = 0, H (u_y = 0, T = Tb, Tt).
+
+//
+
+Both nonlinear terms use the skew-symmetric form, as in 2D:
+  b(w,v,z) = 1/2[((w.grad)v,z) - ((w.grad)z,v)].
+The hydrostatic pressure of the conduction state is removed analytically, as in 2D.
+The constant matrices are assembled and factorized once.
+
+//
+
+usage: FreeFem++-nw nsb3d.edp -Ra 5000 -k 3.117 -Lz 2 -l 1e6 -gy 0 -nx 16 -ny 16 -nz 16 -dt 1e-3 -C 100 -tend 1 -out r.txt
+
+//
+
+Log columns: step t Q~ Q Ekin Etheta Nu_bottom Nu_top Nu_vol Ekin_z [E X with -X 1]
+  Ekin_z = 1/2 ||u_z||^2 measures the three-dimensionality of the flow.
+
+//
+
+Final lines: "# SUMMARY ..." (range of Q~ and Q, final Ekin and Nu, blow-up step, Nu_vol, Ekin_z),
+  "# max X^{n+1}-X^n ..." (-X 1), "# TIMING ..." (CPU time of the set-up and of the time loop),
+  "# MMS ..." (errors against the manufactured solution, -mms 1), "# REF ..." (L2 differences from a saved state, -ref F).
+
+//
+
+Further options:
+ -Lx -Lz cell lengths (default Lx = 2 pi/k, Lz = Lx);
+ -Tz amplitude of an added z-modulated mode (wave number -kz, default 2 pi/Lz);
+ -rollz 1: initial roll varying in z instead of x;
+ -noise S: random initial temperature (seed S, amplitude -Tamp);
+ -iter 1: conjugate gradients instead of the sparse direct factorization (tolerance -itol, default 1e-12);
+ -save F / -load F: restart (both time levels and Q; same mesh and options);
+ -vtk N: ParaView file every N steps;
+ -slice N: T and u_y on the mid-plane y = H/2, uniform (-snx) x (-snz) grid, every N steps;
+ -X 1: energy E^n and X^n of Theorem 4.2(a);
+ -mms 1 -y0 -y1 -nu -kap -G: 3D manufactured solution, errors at the end;
+ -ref F: L2 differences from a state saved with -save F;
+ -rot 0: standard incremental pressure correction;
+ -Tb -Tt -Tref wall and reference temperatures.
+ A run stops when Ekin > 1e10 ("# blow-up").
+*/
+
+// ====== //
+
+load "msh3"
+load "iovtk"
+// load "MUMPS_seq"   (see README: MUMPS can be enabled by uncommenting this line)
+
+/*
+    command-line options "-name value"
+*/
+
+func real argr(string key, real def) {
+    for (int i = 0; i < ARGV.n - 1; i++) {
+        if (ARGV[i] == key) {
+            return atof(ARGV[i+1]);
+        }
+    }
+    return def;
+}
+
+func int argi(string key, int def) {
+    for (int i = 0; i < ARGV.n - 1; i++) {
+        if (ARGV[i] == key) {
+            return atoi(ARGV[i+1]);
+        }
+    }
+    return def;
+}
+
+verbosity = 0;
+
+real Ra = argr("-Ra", 1000.); // Rayleigh number
+real kx = argr("-k", pi/sqrt(2.)); // wave number in x; cell length Lx = 2 pi / k
+int nx = argi("-nx", 12); // mesh of nx x ny x nz cubes, each split into tetrahedra
+int ny = argi("-ny", 12);
+int nz = argi("-nz", 12);
+real dt = argr("-dt", 0.01); // time step dt
+real tend = argr("-tend", 1.); // ending time
+real l = argr("-l", 0.); // slip coefficient (>= 1e5: rigid)
+real nu = argr("-nu", 1.); // viscosity
+real kap = argr("-kap", 1.); // diffusivity
+real Cq = argr("-C", 1.); // weight C of the Q equation
+real A = argr("-A", 1.); // weight A of the thermal energy
+real eta = argr("-eta", 0.95); // relaxation parameter (eta < 0: no relaxation)
+real Tamp = argr("-Tamp", 1e-6); // initial roll amplitude
+real Tz = argr("-Tz", 0.); // amplitude of an added z-modulated mode
+real gy = argr("-gy", 1.); // grading of the mesh towards the walls (1 = uniform, 0 cosine grading towards walls)
+int every = argi("-every", 1); // write a log line every # steps
+int noise = argi("-noise", 0); // >0: random initial temperature perturbation (seed = noise) instead of one mode
+int vtkevery = argi("-vtk", 0); // ParaView file every so many steps (files <out>_NNNNNN.vtu)
+int sliceevery = argi("-slice", 0); // mid-plane slice every so many steps (files <out>.sliceNNNNNN)
+int snx = argi("-snx", 128); // slice grid of snx x snz squares
+int snz = argi("-snz", 128);
+int mms = argi("-mms", 0); // 1: 3D manufactured solution (forcing, errors)
+int rot = argi("-rot", 1); // 1: rotational pressure correction, 0: standard incremental
+int rollz = argi("-rollz", 0); // 1: initial roll varying in z instead of x
+int iter = argi("-iter", 0); // 1: conjugate gradients instead of sparse direct factorization
+int xdiag = argi("-X", 0); // 1: log the energy X^n of Theorem 4.2(a) (and E^n) as extra columns
+real itol = argr("-itol", 1e-12); // relative tolerance of conjugate gradients
+real ybot = argr("-y0", 0.); // lower wall
+real ytop = argr("-y1", 1.); // upper wall
+real Lxin = argr("-Lx", 0.); // cell length in x (default 2 pi / k)
+real Lzin = argr("-Lz", 0.); // cell length in z (default Lx)
+real Gin = argr("-G", -1.); // buoyancy g*beta (default Ra nu kap / H^3)
+string out = "nsb3d.txt"; // log file
+string savef = ""; // -save F: write the final state (both time levels and Q)
+string loadf = ""; // -load F: restart from the state of F
+string reff = ""; // -ref F: compare the final fields with those of F
+for (int i = 0; i < ARGV.n - 1; i++) {
+    if (ARGV[i] == "-out") out = ARGV[i+1];
+    if (ARGV[i] == "-save") savef = ARGV[i+1];
+    if (ARGV[i] == "-load") loadf = ARGV[i+1];
+    if (ARGV[i] == "-ref") reff = ARGV[i+1];
+}
+
+real H = ytop - ybot; // channel height H
+
+real L; // cell length in x
+if (Lxin > 0) {
+    L = Lxin;
+}
+else {
+    L = 2*pi/kx;
+}
+
+real Lz; // cell length in z
+if (Lzin > 0) {
+    Lz = Lzin;
+}
+else {
+    Lz = L;
+}
+
+real kz = argr("-kz", 2*pi/Lz); // wave number in z of the -Tz mode and of -rollz 1
+
+real G; // buoyancy G
+if (Gin > 0) {
+    G = Gin;
+}
+else {
+    G = Ra*nu*kap/H^3;
+}
+
+real Tb = argr("-Tb", 1.); // setting temps
+real Tt = argr("-Tt", 0.);
+real Tref = argr("-Tref", 0.5);
+real Tcp = (Tt - Tb)/H; // T_c(y) = Tb + Tcp*(y - ybot)
+
+include "mms3d.idp" // to call manufactured solns
+
+/*
+ mesh and spaces
+
+labels:
+  * 1 bottom (y = y0), 3 top (y = y1): walls;
+  * 2, 4 (x) and 5, 6 (z): periodic;
+
+  * optional grading towards the walls
+*/
+
+mesh3 Th = cube(nx, ny, nz, [L*x, ybot + H*y, Lz*z]);
+
+// Chebyshev-like spacing (-gy 0)
+// used in rigid-wall simulations
+if (gy != 1.) {
+    Th = cube(nx, ny, nz, [L*x, ybot + H*0.5*(1 - cos(pi*y)), Lz*z]);
+}
+
+fespace Vh(Th, P2, periodic=[[2, y, z], [4, y, z], [5, x, y], [6, x, y]]);
+fespace Ph(Th, P1, periodic=[[2, y, z], [4, y, z], [5, x, y], [6, x, y]]);
+
+// u^{n+1}, u^n, u^{n-1}, extrapolation
+Vh ux, uy, uz, ux0, uy0, uz0, ux1, uy1, uz1, bx, by, bz;
+
+// tilde u = tu_1 + Q~ tu_2
+Vh tx1, ty1, tz1, tx2, ty2, tz2, tux, tuy, tuz;
+
+// theta^{n+1}, theta^n, theta^{n-1}, extrapolation, parts
+Vh th, th0, th1, tb, the1, the2;
+
+// pressure, pressure increment, l2 projection of grad dot u onto P1
+Ph p, p0, phi, divu;
+
+real vol = L*H*Lz;
+
+/*
+  initial state (as in 2D):
+    u = 0,
+    theta = Tamp*sin(pi (y-ybot)/H)*cos(k x) [+ Tz*sin(pi (y-ybot)/H)*cos(k x)*cos(kz z)],
+    p = 0.
+*/
+
+ux0 = 0;
+uy0 = 0;
+uz0 = 0;
+p0 = 0;
+th0 = Tamp*sin(pi*(y - ybot)/H)*cos(kx*x) + Tz*sin(pi*(y - ybot)/H)*cos(kx*x)*cos(kz*z);
+
+if (rollz) { // roll axis along x (variation in z)
+    th0 = Tamp*sin(pi*(y - ybot)/H)*cos(kz*z);
+}
+
+if (mms) { // if using method of man. solns
+    ux0 = mmsux(0.);
+    uy0 = mmsuy(0.);
+    uz0 = mmsuz(0.);
+    th0 = mmsT(0.) - (Tb + Tcp*(y - ybot));
+    p0 = mmsp(0.);
+}
+
+// random values at the nodes, vanishing on the walls
+if (noise > 0) {
+    randinit(noise);
+    for (int i = 0; i < Vh.ndof; i++) {
+        th0[][i] = Tamp*(2*randreal1() - 1);
+    }
+
+    Vh wf = sin(pi*(y - ybot)/H);
+    th0 = th0*wf;
+}
+
+ux1 = ux0;
+uy1 = uy0;
+uz1 = uz0;
+th1 = th0;
+
+real Q0 = 1.; // stored Q^n
+real Q1 = 1.; // stored Q^{n-1}
+real Qt = 1.; // Q~^{n+1}
+real t0 = 0.; // time of the restart state
+int n0 = 0; // step of the restart state
+
+if (loadf != "") { // restart: same mesh and options
+    ifstream f(loadf);
+    f >> n0;
+    f >> t0;
+    f >> Q0;
+    f >> Q1;
+    f >> ux0[];
+    f >> uy0[];
+    f >> uz0[];
+    f >> th0[];
+    f >> p0[];
+    f >> ux1[];
+    f >> uy1[];
+    f >> uz1[];
+    f >> th1[];
+}
+
+// denominators of the Nusselt numbers (Nu undefined without heating, Tb = Tt)
+    // wall form: Nu = 1 + (wall integral of d_y theta)/(Tcp Lx Lz)
+    real nuden = 1.;
+
+    // volume form: Nu_vol = 1 + <u_y theta>/(kap |T_c'|)
+    real nuvden = 1.;
+
+    if (abs(Tcp) > 0) {
+        nuden = Tcp*L*Lz;
+        nuvden = -kap*Tcp*vol;
+    }
+
+// running ranges of Q~ and of the stored Q
+real Qtmin = 1.;
+real Qtmax = 1.;
+real Qmin = 1.;
+real Qmax = 1.;
+
+real Ek = 0.;
+int nblow = -1; // blow-up step (-1: none)
+int ndone = n0; // steps done
+
+/*
+  constant matrices:
+    c0 = 1/dt (Euler) and 3/(2dt) (BDF2),
+    assembled once; factorized at the first solve (direct) or solved by conjugate gradients
+*/
+
+real c0;
+macro grad(u) [dx(u), dy(u), dz(u)] // end of macro
+varf aut(u, v) = int3d(Th)(c0*u*v + nu*grad(u)'*grad(v)) + int2d(Th, 1, 3)(l*u*v); // u_x, u_z (Navier, natural)
+varf auy(u, v) = int3d(Th)(c0*u*v + nu*grad(u)'*grad(v)) + on(1, 3, u = 0);
+varf ath(u, v) = int3d(Th)(c0*u*v + kap*grad(u)'*grad(v)) + on(1, 3, u = 0);
+varf apr(u, v) = int3d(Th)(grad(u)'*grad(v) + 1e-10*u*v);
+varf mv(u, v) = int3d(Th)(u*v);
+varf mvd(u, v) = int3d(Th)(u*v) + on(1, 3, u = 0);
+varf mp(u, v) = int3d(Th)(u*v);
+
+real tA = clock();
+matrix AU1;
+matrix AY1;
+matrix AT1;
+matrix AU2;
+matrix AY2;
+matrix AT2;
+matrix AP;
+matrix MV;
+matrix MVD; // for u_y = 0 on the walls
+matrix MP;
+
+if (!iter) { // sparse direct
+    c0 = 1./dt; // first step: backward Euler
+    AU1 = aut(Vh, Vh, solver=sparsesolver);
+    AY1 = auy(Vh, Vh, solver=sparsesolver);
+    AT1 = ath(Vh, Vh, solver=sparsesolver);
+
+    c0 = 1.5/dt; // later steps: BDF2
+    AU2 = aut(Vh, Vh, solver=sparsesolver);
+    AY2 = auy(Vh, Vh, solver=sparsesolver);
+    AT2 = ath(Vh, Vh, solver=sparsesolver);
+    AP = apr(Ph, Ph, solver=sparsesolver);
+
+    MV = mv(Vh, Vh, solver=sparsesolver);
+    MVD = mvd(Vh, Vh, solver=sparsesolver);
+    MP = mp(Ph, Ph, solver=sparsesolver);
+}
+else { // conjugate gradients (all these matrices are SPD), tolerance -itol
+    c0 = 1./dt; // first step: backward Euler
+    AU1 = aut(Vh, Vh, solver=CG, eps=itol);
+    AY1 = auy(Vh, Vh, solver=CG, eps=itol);
+    AT1 = ath(Vh, Vh, solver=CG, eps=itol);
+
+    c0 = 1.5/dt; // later steps: BDF2
+    AU2 = aut(Vh, Vh, solver=CG, eps=itol);
+    AY2 = auy(Vh, Vh, solver=CG, eps=itol);
+    AT2 = ath(Vh, Vh, solver=CG, eps=itol);
+    AP = apr(Ph, Ph, solver=CG, eps=itol);
+
+    MV = mv(Vh, Vh, solver=CG, eps=itol);
+    MVD = mvd(Vh, Vh, solver=CG, eps=itol);
+    MP = mp(Ph, Ph, solver=CG, eps=itol);
+}
+real tAssemble = clock() - tA;
+
+/*
+  SOLVE(A, b, x): x = A^-1 b, except x = 0 when b is negligible.
+
+  CG stops with an error on a zero or round-off right-hand side,
+  which occurs for u_z in z-independent flows.
+
+  For the velocity and temperature solves, "negligible" means |b| < 1e-13 |b_ref|,
+  b_ref the largest such right-hand side of the step (sref, reset each step).
+
+  For the two pressure solves (SOLVEP), the right-hand side is (div tu, q);
+  in a steady state it tends to zero by cancellation between (dx tux, q), (dy tuy, q), (dz tuz, q),
+  and it is negligible when |b| < 1e-10 (sum of the three norms) (pref).
+*/
+real sref = 0.;
+macro SOLVE(Amat, rhs, xv) {
+    real nb = rhs.l2;
+    sref = max(sref, nb);
+    if (nb <= 1e-13*sref || nb < 1e-30) {
+        xv = 0;
+    }
+    else {
+        xv = Amat^-1*rhs;
+    }
+} // end of macro
+
+real pref = 0.;
+macro SOLVEP(Amat, rhs, xv, sc) {
+    if (rhs.l2 <= 1e-10*sc || rhs.l2 < 1e-30) {
+        xv = 0;
+    }
+    else {
+        xv = Amat^-1*rhs;
+    }
+} // end of macro
+
+// S = I - cS Laplacian (Neumann),
+// ||q||_M^2 = (grad q, grad S^-1 q), for the pressure term dt^2/3 ||p||_M^2 of E^n (-X 1)
+real cS = 2*nu*dt/3;
+varf asm(u, v) = int3d(Th)(u*v + cS*grad(u)'*grad(v));
+matrix SM;
+if (xdiag) {
+    SM = asm(Ph, Ph, solver=sparsesolver);
+}
+
+real CP = H/pi; // Poincare constant
+real Bp = G^2*CP^4/(2*nu) + dt*G^2*CP^2/3; // B' of Theorem 4.2(a)
+real Xold = -1.; // X^n of the previous step, and the largest one-step change
+real dXmax = -1e300;
+
+/*
+  matrices for the right-hand sides (assembled once):
+    mass M,
+    gradient G* (P1 -> P2),
+    divergence D* (P2 -> P1),
+    and a mask that zeroes the rows of the Dirichlet dofs (walls) of u_y and theta,
+    as on(1,3,u=0) does for a right-hand side
+*/
+varf vmass(u, v) = int3d(Th)(u*v);
+varf vgx(p, v) = int3d(Th)(dx(p)*v);
+varf vgy(p, v) = int3d(Th)(dy(p)*v);
+varf vgz(p, v) = int3d(Th)(dz(p)*v);
+varf vdx(u, q) = int3d(Th)(dx(u)*q);
+varf vdy(u, q) = int3d(Th)(dy(u)*q);
+varf vdz(u, q) = int3d(Th)(dz(u)*q);
+matrix M0 = vmass(Vh, Vh);
+matrix GX = vgx(Ph, Vh);
+matrix GY = vgy(Ph, Vh);
+matrix GZ = vgz(Ph, Vh);
+matrix DX = vdx(Vh, Ph);
+matrix DY = vdy(Vh, Ph);
+matrix DZ = vdz(Vh, Ph);
+
+varf vbc(u, v) = on(1, 3, u = 1);
+real[int] onwall = vbc(0, Vh, tgv=1);
+real[int] wallmask(Vh.ndof); // 0 on the walls, 1 elsewhere
+wallmask = 1;
+wallmask -= onwall;
+
+// buoyancy of the conduction state, kept in the equations for the manufactured solution
+real[int] hydv(Vh.ndof);
+hydv = 0;
+if (mms) {
+    varf vh(u, v) = int3d(Th)(G*(Tb + Tcp*(y - ybot) - Tref)*v);
+    hydv = vh(0, Vh);
+}
+
+/*
+  convection matrix of the step:
+    K_ij = -1/2 [ (w.grad phi_j, phi_i) - (w.grad phi_i, phi_j) ], w = extrapolated velocity;
+    K s is the right-hand side -b(w, s, .) for each velocity component and for theta
+*/
+macro adv(s, v) (bx*dx(s) + by*dy(s) + bz*dz(s))*v // end of macro
+varf vconv(s, v) = int3d(Th)(-0.5*(adv(s, v) - adv(v, s)));
+
+/*
+ right-hand sides:
+   part 1 without Q (time history, pressure gradient, buoyancy, stratification) from the matrices above,
+   part 2 multiplied by Q~ (minus the skew-symmetric convection / advection) from K
+*/
+
+real a1; // BDF coefficients of u^n, u^{n-1} in the time derivative
+real a2;
+real Qs; // coefficient used by the pressure step
+real tn1; // time of the new level (forcing)
+
+// manufactured-solution forcing at t^{n+1}
+// (bulk, and the slip condition l u_tau + nu d_n u_tau = Sw on u_x and u_z)
+varf fx(u, v) = int3d(Th)(mmsSux(tn1)*v) + int2d(Th, 1)(mmsSwxbot(tn1)*v) + int2d(Th, 3)(mmsSwxtop(tn1)*v);
+varf fy(u, v) = int3d(Th)(mmsSuy(tn1)*v) + on(1, 3, u = 0);
+varf fz(u, v) = int3d(Th)(mmsSuz(tn1)*v) + int2d(Th, 1)(mmsSwzbot(tn1)*v) + int2d(Th, 3)(mmsSwztop(tn1)*v);
+varf ft(u, v) = int3d(Th)(mmsST(tn1)*v) + on(1, 3, u = 0);
+
+// ====== //
+
+/*
+  log file (appended to on a restart)
+*/
+if (loadf == "") { // fresh run: start a new log
+    ofstream clear(out);
+}
+
+ofstream fout(out, append);
+
+if (loadf == "") {
+    fout << "# FreeFem++ nsb3d.edp Ra=" << Ra << " k=" << kx << " Lx=" << L << " Lz=" << Lz << " nx=" << nx << " ny=" << ny
+         << " nz=" << nz << " gy=" << gy << " dt=" << dt << " l=" << l << " C=" << Cq << " A=" << A << " eta=" << eta
+         << " Vh.ndof=" << Vh.ndof << " Ph.ndof=" << Ph.ndof << " iter=" << iter << endl;
+    fout << "# step t Qtilde Q Ekin Etheta Nu_bottom Nu_top Nu_vol Ekin_z";
+
+    if (xdiag) {
+        fout << " E X";
+    }
+
+    fout << endl;
+}
+else {
+    fout << "# RESTART from " << loadf << " at step " << n0 << endl;
+}
+
+fout.precision(12);
+
+int[int] vtkorder = [1, 1]; // VTK output as vertex (P1) data
+
+// ====== //
+
+/*
+    time loop
+*/
+real tStep = clock();
+int nt = lrint(tend/dt);
+for (int n = n0; n < nt; n++) {
+    bool first = (n == 0);
+    real cd; // coefficient of the new value
+    if (first) { // backward Euler: history u^n, extrapolation u^n
+        cd = 1./dt;
+        a1 = 1./dt;
+        a2 = 0.;
+        bx = ux0;
+        by = uy0;
+        bz = uz0;
+        tb = th0;
+    }
+    else { // BDF2:
+      // history 2u^n - u^{n-1}/2, extrapolation 2u^n - u^{n-1}
+        cd = 1.5/dt;
+        a1 = 2./dt;
+        a2 = -0.5/dt;
+        bx = 2*ux0 - ux1;
+        by = 2*uy0 - uy1;
+        bz = 2*uz0 - uz1;
+        tb = 2*th0 - th1;
+    }
+    tn1 = (n + 1)*dt;
+
+    // ---- Step 1:
+    //  two solves with the same matrix for each field (part 1, part 2)
+    sref = 0.;
+    real[int] b(Vh.ndof);
+    real[int] bf(Vh.ndof);
+    real[int] w(Vh.ndof);
+    real[int] g(Vh.ndof);
+
+    // u_x, part 1
+    w = a1*ux0[];
+    w += a2*ux1[];
+    b = M0*w;
+    g = GX*p0[];
+    b -= g;
+    if (mms) {
+        bf = fx(0, Vh);
+        b += bf;
+    }
+    if (first) {
+        SOLVE(AU1, b, tx1[])
+    }
+    else {
+        SOLVE(AU2, b, tx1[])
+    }
+
+    // u_y, part 1 (with the buoyancy of the extrapolated theta)
+    w = a1*uy0[];
+    w += a2*uy1[];
+    w += G*tb[];
+    b = M0*w;
+    g = GY*p0[];
+    b -= g;
+    b += hydv;
+    if (mms) {
+        bf = fy(0, Vh);
+        b += bf;
+    }
+    b = b .* wallmask;
+    if (first) {
+        SOLVE(AY1, b, ty1[])
+    }
+    else {
+        SOLVE(AY2, b, ty1[])
+    }
+
+    // u_z, part 1
+    w = a1*uz0[];
+    w += a2*uz1[];
+    b = M0*w;
+    g = GZ*p0[];
+    b -= g;
+    if (mms) {
+        bf = fz(0, Vh);
+        b += bf;
+    }
+    if (first) {
+        SOLVE(AU1, b, tz1[])
+    }
+    else {
+        SOLVE(AU2, b, tz1[])
+    }
+
+    // theta, part 1 (with the stratification -Tcp u_y)
+    w = a1*th0[];
+    w += a2*th1[];
+    w -= Tcp*by[];
+    b = M0*w;
+    if (mms) {
+        bf = ft(0, Vh);
+        b += bf;
+    }
+    b = b .* wallmask;
+    if (first) {
+        SOLVE(AT1, b, the1[])
+    }
+    else {
+        SOLVE(AT2, b, the1[])
+    }
+
+    // part 2: the vectors r = -b(w, ., phi_i) are kept;
+    //   b(w,w,z) = -(r_x.z_x + r_y.z_y + r_z.z_z), b(w,theta,z) = -r_t.z
+    //   (the Dirichlet rows of r_y, r_t are zero, as are those of the test fields),
+    //   so the Q equation needs no extra integrals
+    matrix K = vconv(Vh, Vh);
+    real[int] r2x = K*bx[];
+    real[int] r2y = K*by[];
+    real[int] r2z = K*bz[];
+    real[int] r2t = K*tb[];
+    r2y = r2y .* wallmask;
+    r2t = r2t .* wallmask;
+    if (first) {
+        SOLVE(AU1, r2x, tx2[])
+        SOLVE(AY1, r2y, ty2[])
+        SOLVE(AU1, r2z, tz2[])
+        SOLVE(AT1, r2t, the2[])
+    }
+    else {
+        SOLVE(AU2, r2x, tx2[])
+        SOLVE(AY2, r2y, ty2[])
+        SOLVE(AU2, r2z, tz2[])
+        SOLVE(AT2, r2t, the2[])
+    }
+
+    // ---- Q equation:
+    /*
+        C (c_new Q~ - c1 Q^n - c2 Q^{n-1})
+        = b(u,u,tu1) + Q~ b(u,u,tu2) + A[b(u,t,th1) + Q~ b(u,t,th2)]
+    */
+    real I1 = -(r2x'*tx1[] + r2y'*ty1[] + r2z'*tz1[]) - A*(r2t'*the1[]);
+    real I2 = -(r2x'*tx2[] + r2y'*ty2[] + r2z'*tz2[]) - A*(r2t'*the2[]);
+
+    real hist;
+    if (first) {
+        hist = Cq*Q0/dt;
+    }
+    else {
+        hist = Cq*(2.*Q0 - 0.5*Q1)/dt;
+    }
+
+    Qt = (hist + I1)/(Cq*cd - I2);
+    tux = tx1 + Qt*tx2;
+    tuy = ty1 + Qt*ty2;
+    tuz = tz1 + Qt*tz2;
+    th = the1 + Qt*the2;
+
+    // ---- Step 2:
+    // rotational pressure correction
+
+    real[int] bp(Ph.ndof);
+
+    // (div tu, q), and the sum of the norms of its three terms
+    real[int] dvu = DX*tux[];
+    pref = dvu.l2;
+    bp = DY*tuy[];
+    pref += bp.l2;
+    dvu += bp;
+    bp = DZ*tuz[];
+    pref += bp.l2;
+    dvu += bp;
+
+    bp = -cd*dvu;
+    SOLVEP(AP, bp, phi[], cd*pref)
+
+    real mphi = int3d(Th)(phi)/vol;
+
+    phi = phi - mphi;
+    SOLVEP(MP, dvu, divu[], pref)
+
+    if (rot) {
+        p = p0 + phi - nu*divu;
+    }
+    else {
+        p = p0 + phi;
+    }
+
+    Qs = 1./cd;
+    // L2 projection of tu - grad(phi)/c_new onto P2
+    b = M0*tux[];
+    g = GX*phi[];
+    b -= Qs*g;
+    SOLVE(MV, b, ux[])
+
+    b = M0*tuy[];
+    g = GY*phi[];
+    b -= Qs*g;
+    b = b .* wallmask;
+    SOLVE(MVD, b, uy[])
+
+    b = M0*tuz[];
+    g = GZ*phi[];
+    b -= Qs*g;
+    SOLVE(MV, b, uz[])
+
+    // ---- Step 3: relaxation
+    /*
+        Q^{n+1} = xi Q~ + (1 - xi), smallest xi in [0,1] with
+
+        E_Q(Q^{n+1}) - E_Q(Q~) <= eta dt D,
+
+        D = nu/2 |curl tu|^2 + l |tu_tau|^2_wall
+
+    */
+    real Qn = Qt;
+    if (eta >= 0) {
+        real D = nu/2*int3d(Th)((dy(tuz) - dz(tuy))^2 + (dz(tux) - dx(tuz))^2 + (dx(tuy) - dy(tux))^2);
+
+        // wall term omitted for rigid walls, as in 2D
+        if (l < 1e5) {
+            D += l*int2d(Th, 1, 3)(tux^2 + tuz^2);
+        }
+        real a = Qt - 1.;
+
+        // E_Q(q) = C/4 (q^2 + (2q - Q^n)^2) for BDF2,
+        // E_Q(q) = C/2 q^2 for the Euler step
+        real c2;
+        real c1;
+        real cc;
+        if (first) {
+            c2 = Cq/2*a*a;
+            c1 = Cq*a;
+            cc = Cq/2 - Cq/2*Qt*Qt - eta*dt*D;
+        }
+        else {
+            c2 = 5*Cq/4*a*a;
+            c1 = Cq/4*a*(10 - 4*Q0);
+            cc = Cq/4*(5 - 4*Q0) - Cq/4*(5*Qt*Qt - 4*Qt*Q0) - eta*dt*D;
+        }
+        real xi = 1.;
+        if (abs(a) < 1e-300 || cc <= 0) { // xi = 0...
+            xi = 0.;
+        }
+        else { // ... or xi = the root of the quadratic
+            real disc = c1*c1 - 4*c2*cc;
+            if (disc < 0) {
+                disc = 0;
+            }
+            xi = (-c1 - sqrt(disc))/(2*c2);
+            if (xi < 0) {
+                xi = (-c1 + sqrt(disc))/(2*c2);
+            }
+            xi = min(1., max(0., xi));
+        }
+        Qn = xi*Qt + (1 - xi);
+    }
+
+    // ---- shift the time levels
+    ux1 = ux0;
+    uy1 = uy0;
+    uz1 = uz0;
+    th1 = th0;
+
+    ux0 = ux;
+    uy0 = uy;
+    uz0 = uz;
+    th0 = th;
+
+    p0 = p;
+    Q1 = Q0;
+    Q0 = Qn;
+
+    ndone = n + 1;
+
+    Qtmin = min(Qtmin, Qt);
+    Qtmax = max(Qtmax, Qt);
+    Qmin = min(Qmin, Qn);
+    Qmax = max(Qmax, Qn);
+
+    Ek = 0.5*int3d(Th)(ux^2 + uy^2 + uz^2);
+
+    if (!(Ek < 1e10)) { // also true when Ek is NaN
+        nblow = n + 1;
+        fout << "# blow-up at step " << n + 1 << endl;
+        break;
+    }
+
+    // ---- discrete energy E^n and X^n of Theorem 4.2(a) (-X 1)
+    real En = 0.;
+    real Xn = 0.;
+    if (xdiag) {
+        real[int] bq = MP*p0[];
+        Ph wS;
+        wS[] = SM^-1*bq; // wS = S^-1 p
+
+        real pM = int3d(Th)(grad(p0)'*grad(wS));
+
+        En = 0.25*int3d(Th)(ux0^2 + uy0^2 + uz0^2 + (2*ux0 - ux1)^2 + (2*uy0 - uy1)^2 + (2*uz0 - uz1)^2) + dt^2/3*pM
+           + A/4*int3d(Th)(th0^2 + (2*th0 - th1)^2) + Cq/4*(Q0^2 + (2*Q0 - Q1)^2);
+
+        Xn = En + dt*Bp*int3d(Th)(10*grad(th0)'*grad(th0) + 2*grad(th1)'*grad(th1));
+
+        if (n >= 1) { // Theorem 4.2(a) is for n >= 1
+            if (Xold >= 0) {
+                dXmax = max(dXmax, Xn - Xold);
+            }
+            Xold = Xn;
+        }
+    }
+
+    // ---- log line every -every steps
+    if ((n + 1) % every == 0) {
+        real Et = 0.5*int3d(Th)(th^2);
+        real Ekz = 0.5*int3d(Th)(uz^2);
+        real Nub = 1 + int2d(Th, 1)(dy(th))/nuden;
+        real Nut = 1 + int2d(Th, 3)(dy(th))/nuden;
+        real Nuv = 1 + int3d(Th)(uy*th)/nuvden;
+        fout << n + 1 << " " << (n + 1)*dt << " " << Qt << " " << Qn << " " << Ek << " " << Et
+             << " " << Nub << " " << Nut << " " << Nuv << " " << Ekz;
+        if (xdiag) {
+            fout << " " << En << " " << Xn;
+        }
+        fout << endl;
+    }
+
+    // ---- ParaView file every -vtk steps
+    if (vtkevery > 0) {
+        if ((n + 1) % vtkevery == 0) {
+            Vh Tf = Tb + Tcp*(y - ybot) + th0;
+            savevtk(out + "_" + (100000 + n + 1) + ".vtu", Th, [ux0, uy0, uz0], Tf, dataname="u T", order=vtkorder);
+        }
+    }
+
+    // ---- mid-plane slice every -slice steps: T and u_y on a uniform (snx+1) x (snz+1) grid, x fastest
+    if (sliceevery > 0) {
+        if ((n + 1) % sliceevery == 0) {
+            ofstream g(out + ".slice" + (100000 + n + 1));
+            g.precision(6);
+            g << "# t= " << (n + 1)*dt << " y= " << ybot + 0.5*H << " nx= " << snx << " nz= " << snz
+              << " Lx= " << L << " Lz= " << Lz << endl;
+            for (int j = 0; j <= snz; j++) {
+                for (int i = 0; i <= snx; i++) {
+                    real xx = min(L*i/snx, L*(1 - 1e-9));
+                    real zz = min(Lz*j/snz, Lz*(1 - 1e-9));
+                    g << Tb + Tcp*0.5*H + th0(xx, ybot + 0.5*H, zz) << " " << uy0(xx, ybot + 0.5*H, zz) << "\n";
+                }
+            }
+        }
+    }
+}
+
+real tLoop = clock() - tStep; // CPU time of the time loop
+
+/*
+  summary: range of Q~ and of the stored Q, final state, largest one-step change of X^n, CPU time
+*/
+{
+    real Nub = 1 + int2d(Th, 1)(dy(th0))/nuden;
+    real Nut = 1 + int2d(Th, 3)(dy(th0))/nuden;
+    real Nuv = 1 + int3d(Th)(uy0*th0)/nuvden;
+
+    fout << "# SUMMARY steps Qtilde_min Qtilde_max Q_min Q_max Ekin Nu_bottom Nu_top blowup_step Nu_vol Ekin_z: " << ndone
+         << " " << Qtmin << " " << Qtmax << " " << Qmin << " " << Qmax << " " << Ek << " " << Nub << " " << Nut
+         << " " << nblow << " " << Nuv << " " << 0.5*int3d(Th)(uz0^2) << endl;
+
+    if (xdiag) {
+        fout << "# max X^{n+1}-X^n (n>=1): " << dXmax << endl;
+    }
+
+    fout << "# TIMING assembly+factorization " << tAssemble << " s, " << (ndone - n0) << " steps " << tLoop << " s ("
+         << tLoop/max(1, ndone - n0) << " s/step)" << endl;
+}
+
+// ====== //
+
+/*
+  final state: save (both time levels and Q, for a restart with -load F)
+*/
+if (savef != "") {
+    ofstream f(savef);
+    f.precision(17);
+    f << ndone << " " << ndone*dt << " " << Q0 << " " << Q1 << endl;
+    f << ux0[] << uy0[] << uz0[] << th0[] << p0[] << ux1[] << uy1[] << uz1[] << th1[];
+}
+
+/*
+ manufactured solution: errors against the exact functions at the final time (pressure compared up to its mean)
+*/
+if (mms) {
+    real te = nt*dt;
+    real pm = int3d(Th)(p0)/vol;
+    real pe = int3d(Th)(mmsp(te))/vol;
+
+    real e2u = sqrt(int3d(Th, qforder=6)((ux0 - mmsux(te))^2 + (uy0 - mmsuy(te))^2 + (uz0 - mmsuz(te))^2));
+    real e2T = sqrt(int3d(Th, qforder=6)((th0 + Tb + Tcp*(y - ybot) - mmsT(te))^2));
+    real e2p = sqrt(int3d(Th, qforder=6)((p0 - pm - (mmsp(te) - pe))^2));
+
+    fout << "# MMS dt, L2 errors u T p (exact functions), |Q~-1|: " << dt << " " << e2u << " " << e2T << " " << e2p
+         << " " << abs(Qt - 1) << endl;
+}
+
+/*
+  L2 differences from a saved state (e.g. a much smaller time step), pressure up to its mean
+*/
+if (reff != "") {
+    Vh rx;
+    Vh ry;
+    Vh rz;
+    Vh rt;
+    Ph rp;
+    int rn;
+    real rtt;
+    real rq0;
+    real rq1;
+    {
+        ifstream f(reff);
+        f >> rn;
+        f >> rtt;
+        f >> rq0;
+        f >> rq1;
+        f >> rx[];
+        f >> ry[];
+        f >> rz[];
+        f >> rt[];
+        f >> rp[];
+    }
+
+    real pm = int3d(Th)(p0)/vol;
+    real rpm = int3d(Th)(rp)/vol;
+
+    real du = sqrt(int3d(Th)((ux0 - rx)^2 + (uy0 - ry)^2 + (uz0 - rz)^2));
+    real dT = sqrt(int3d(Th)((th0 - rt)^2));
+    real dp = sqrt(int3d(Th)((p0 - pm - rp + rpm)^2));
+
+    fout << "# REF dt, L2 difference u T p from " << reff << ": " << dt << " " << du << " " << dT << " " << dp << endl;
+}

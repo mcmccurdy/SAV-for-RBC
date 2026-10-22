@@ -1,0 +1,363 @@
+# Every FreeFEM run behind the tables, figures and quoted values of the two-dimensional computations of the paper.
+# Each non-comment line is one job, run from the work folder, which holds copies of: 
+# nsb.edp, eig.edp and mms.idp. 
+#
+# reproduce/reproduce.sh creates the output folders, runs these jobs in parallel, then
+# the comparison step for the time errors of the manufactured solution, and writes every table and figure.
+#
+# Jobs ending in '#@long' (the Ra = 1e6 runs, several hours each) run only with reproduce.sh --with-long.
+#
+# The three-dimensional runs of Section 6.10 are listed separately, in 3d/runs/.
+# Numbers of sections, tables and figures refer to the current manuscript.
+#
+# Section 6.1, Table 2 and Figure 2(a): manufactured solution on the uniform 40x40 mesh.
+# Reference run (dt = 1.953125e-4), then the rotational scheme with relaxation (rT), the standard pressure update (rF),
+# and the rotational scheme without relaxation (u). Table 2 uses dt = 0.05 ... 0.003125; Figure 2(a) also uses 0.0015625.
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -dt 1.953125e-4 -tend 0.5 -save mms/ref_N40.dat -out mms/ref_N40.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.05 -tend 0.5 -save mms/rT_N40_dt0.05.dat -out mms/rT_N40_dt0.05.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.025 -tend 0.5 -save mms/rT_N40_dt0.025.dat -out mms/rT_N40_dt0.025.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.0125 -tend 0.5 -save mms/rT_N40_dt0.0125.dat -out mms/rT_N40_dt0.0125.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.00625 -tend 0.5 -save mms/rT_N40_dt0.00625.dat -out mms/rT_N40_dt0.00625.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.003125 -tend 0.5 -save mms/rT_N40_dt0.003125.dat -out mms/rT_N40_dt0.003125.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.0015625 -tend 0.5 -save mms/rT_N40_dt0.0015625.dat -out mms/rT_N40_dt0.0015625.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 0 -dt 0.05 -tend 0.5 -save mms/rF_N40_dt0.05.dat -out mms/rF_N40_dt0.05.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 0 -dt 0.025 -tend 0.5 -save mms/rF_N40_dt0.025.dat -out mms/rF_N40_dt0.025.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 0 -dt 0.0125 -tend 0.5 -save mms/rF_N40_dt0.0125.dat -out mms/rF_N40_dt0.0125.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 0 -dt 0.00625 -tend 0.5 -save mms/rF_N40_dt0.00625.dat -out mms/rF_N40_dt0.00625.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 0 -dt 0.003125 -tend 0.5 -save mms/rF_N40_dt0.003125.dat -out mms/rF_N40_dt0.003125.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 0 -dt 0.0015625 -tend 0.5 -save mms/rF_N40_dt0.0015625.dat -out mms/rF_N40_dt0.0015625.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -eta -1 -dt 0.05 -tend 0.5 -save mms/u_N40_dt0.05.dat -out mms/u_N40_dt0.05.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -eta -1 -dt 0.025 -tend 0.5 -save mms/u_N40_dt0.025.dat -out mms/u_N40_dt0.025.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -eta -1 -dt 0.0125 -tend 0.5 -save mms/u_N40_dt0.0125.dat -out mms/u_N40_dt0.0125.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -eta -1 -dt 0.00625 -tend 0.5 -save mms/u_N40_dt0.00625.dat -out mms/u_N40_dt0.00625.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -eta -1 -dt 0.003125 -tend 0.5 -save mms/u_N40_dt0.003125.dat -out mms/u_N40_dt0.003125.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -eta -1 -dt 0.0015625 -tend 0.5 -save mms/u_N40_dt0.0015625.dat -out mms/u_N40_dt0.0015625.txt
+#
+# Section 6.1: the same test on a mesh graded towards the walls, rotational vs standard pressure update.
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -gy 0 -tend 0.5 -dt 0.0125 -rot 1 -save mms/gy/rot_0.0125.dat -out mms/gy/rot_0.0125.txt; FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -gy 0 -tend 0.5 -dt 0.0125 -rot 0 -ref mms/gy/rot_0.0125.dat -out mms/gy/std_0.0125.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -gy 0 -tend 0.5 -dt 0.003125 -rot 1 -save mms/gy/rot_0.003125.dat -out mms/gy/rot_0.003125.txt; FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -gy 0 -tend 0.5 -dt 0.003125 -rot 0 -ref mms/gy/rot_0.003125.dat -out mms/gy/std_0.003125.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -gy 0 -tend 0.5 -dt 0.00078125 -rot 1 -save mms/gy/rot_0.00078125.dat -out mms/gy/rot_0.00078125.txt; FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -gy 0 -tend 0.5 -dt 0.00078125 -rot 0 -ref mms/gy/rot_0.00078125.dat -out mms/gy/std_0.00078125.txt
+#
+# Section 6.1, Table 3: spatial convergence of the manufactured solution, N = 8, 16, 32, 64,
+# and N = 64 at dt = 5e-4 (check that the time error does not affect the finest mesh).
+FreeFem++-nw nsb.edp -mms 1 -Lx 6.283185307179586 -y0 -1 -y1 1 -nu 0.1 -kap 0.05 -G 1 -l 1 -Tb 1 -Tt 0 -Tref 0.5 -tend 0.5 -nx 8 -ny 8 -dt 2.5e-4 -out space/s8_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -mms 1 -Lx 6.283185307179586 -y0 -1 -y1 1 -nu 0.1 -kap 0.05 -G 1 -l 1 -Tb 1 -Tt 0 -Tref 0.5 -tend 0.5 -nx 16 -ny 16 -dt 2.5e-4 -out space/s16_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -mms 1 -Lx 6.283185307179586 -y0 -1 -y1 1 -nu 0.1 -kap 0.05 -G 1 -l 1 -Tb 1 -Tt 0 -Tref 0.5 -tend 0.5 -nx 32 -ny 32 -dt 2.5e-4 -out space/s32_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -mms 1 -Lx 6.283185307179586 -y0 -1 -y1 1 -nu 0.1 -kap 0.05 -G 1 -l 1 -Tb 1 -Tt 0 -Tref 0.5 -tend 0.5 -nx 64 -ny 64 -dt 2.5e-4 -out space/s64_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -mms 1 -Lx 6.283185307179586 -y0 -1 -y1 1 -nu 0.1 -kap 0.05 -G 1 -l 1 -Tb 1 -Tt 0 -Tref 0.5 -tend 0.5 -nx 64 -ny 64 -dt 5e-4 -out space/s64_dt5e-4.txt
+#
+# Section 6.2, Table 4 and Figure 3(a): free-slip growth rates on the 32x32 mesh, dt = 0.04, 0.02, 0.01, 0.005.
+# Ra = 1000
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 1000 -dt 0.005 -nx 32 -ny 32 -out onset2/N32_Ra1000_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 1000 -dt 0.01 -nx 32 -ny 32 -out onset2/N32_Ra1000_dt0.01.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 1000 -dt 0.02 -nx 32 -ny 32 -out onset2/N32_Ra1000_dt0.02.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 1000 -dt 0.04 -nx 32 -ny 32 -out onset2/N32_Ra1000_dt0.04.txt
+# Ra = 500
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 500 -dt 0.005 -nx 32 -ny 32 -out onset2/N32_Ra500_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 500 -dt 0.01 -nx 32 -ny 32 -out onset2/N32_Ra500_dt0.01.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 500 -dt 0.02 -nx 32 -ny 32 -out onset2/N32_Ra500_dt0.02.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 500 -dt 0.04 -nx 32 -ny 32 -out onset2/N32_Ra500_dt0.04.txt
+# Ra = 600
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 600 -dt 0.005 -nx 32 -ny 32 -out onset2/N32_Ra600_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 600 -dt 0.01 -nx 32 -ny 32 -out onset2/N32_Ra600_dt0.01.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 600 -dt 0.02 -nx 32 -ny 32 -out onset2/N32_Ra600_dt0.02.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 600 -dt 0.04 -nx 32 -ny 32 -out onset2/N32_Ra600_dt0.04.txt
+# Ra = 650
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 650 -dt 0.005 -nx 32 -ny 32 -out onset2/N32_Ra650_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 650 -dt 0.01 -nx 32 -ny 32 -out onset2/N32_Ra650_dt0.01.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 650 -dt 0.02 -nx 32 -ny 32 -out onset2/N32_Ra650_dt0.02.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 650 -dt 0.04 -nx 32 -ny 32 -out onset2/N32_Ra650_dt0.04.txt
+# Ra = 660
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 660 -dt 0.005 -nx 32 -ny 32 -out onset2/N32_Ra660_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 660 -dt 0.01 -nx 32 -ny 32 -out onset2/N32_Ra660_dt0.01.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 660 -dt 0.02 -nx 32 -ny 32 -out onset2/N32_Ra660_dt0.02.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 660 -dt 0.04 -nx 32 -ny 32 -out onset2/N32_Ra660_dt0.04.txt
+# Ra = 700
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 700 -dt 0.005 -nx 32 -ny 32 -out onset2/N32_Ra700_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 700 -dt 0.01 -nx 32 -ny 32 -out onset2/N32_Ra700_dt0.01.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 700 -dt 0.02 -nx 32 -ny 32 -out onset2/N32_Ra700_dt0.02.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 700 -dt 0.04 -nx 32 -ny 32 -out onset2/N32_Ra700_dt0.04.txt
+# Ra = 800
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 800 -dt 0.005 -nx 32 -ny 32 -out onset2/N32_Ra800_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 800 -dt 0.01 -nx 32 -ny 32 -out onset2/N32_Ra800_dt0.01.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 800 -dt 0.02 -nx 32 -ny 32 -out onset2/N32_Ra800_dt0.02.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 800 -dt 0.04 -nx 32 -ny 32 -out onset2/N32_Ra800_dt0.04.txt
+#
+# Section 6.2: free-slip Ra_c = 657.510 from the quadratic fit on the 48x48 mesh, dt = 0.005 (values_rac.tex).
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 600 -dt 0.005 -nx 48 -ny 48 -out onset2/N48_Ra600_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 650 -dt 0.005 -nx 48 -ny 48 -out onset2/N48_Ra650_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 660 -dt 0.005 -nx 48 -ny 48 -out onset2/N48_Ra660_dt0.005.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -tend 2 -every 1 -Ra 700 -dt 0.005 -nx 48 -ny 48 -out onset2/N48_Ra700_dt0.005.txt
+#
+# Section 6.2 and Figure 3(b): rigid-wall onset, k = 3.1163, l/nu = 1e6, on the 24x24, 32x32 and 48x48 graded meshes;
+# Ra_c from the quadratic fit in Ra (values_rac.tex). Ra = 1710 on 48x48 is the extra point just above onset.
+FreeFem++-nw nsb.edp -Ra 1650 -k 3.1163 -l 1e6 -gy 0 -nx 24 -ny 24 -dt 0.01 -tend 2 -every 1 -out rigid2/N24_Ra1650.txt
+FreeFem++-nw nsb.edp -Ra 1700 -k 3.1163 -l 1e6 -gy 0 -nx 24 -ny 24 -dt 0.01 -tend 2 -every 1 -out rigid2/N24_Ra1700.txt
+FreeFem++-nw nsb.edp -Ra 1750 -k 3.1163 -l 1e6 -gy 0 -nx 24 -ny 24 -dt 0.01 -tend 2 -every 1 -out rigid2/N24_Ra1750.txt
+FreeFem++-nw nsb.edp -Ra 1800 -k 3.1163 -l 1e6 -gy 0 -nx 24 -ny 24 -dt 0.01 -tend 2 -every 1 -out rigid2/N24_Ra1800.txt
+FreeFem++-nw nsb.edp -Ra 1650 -k 3.1163 -l 1e6 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out rigid2/N32_Ra1650.txt
+FreeFem++-nw nsb.edp -Ra 1700 -k 3.1163 -l 1e6 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out rigid2/N32_Ra1700.txt
+FreeFem++-nw nsb.edp -Ra 1750 -k 3.1163 -l 1e6 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out rigid2/N32_Ra1750.txt
+FreeFem++-nw nsb.edp -Ra 1800 -k 3.1163 -l 1e6 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out rigid2/N32_Ra1800.txt
+FreeFem++-nw nsb.edp -Ra 1650 -k 3.1163 -l 1e6 -gy 0 -nx 48 -ny 48 -dt 0.01 -tend 2 -every 1 -out rigid2/N48_Ra1650.txt
+FreeFem++-nw nsb.edp -Ra 1700 -k 3.1163 -l 1e6 -gy 0 -nx 48 -ny 48 -dt 0.01 -tend 2 -every 1 -out rigid2/N48_Ra1700.txt
+FreeFem++-nw nsb.edp -Ra 1750 -k 3.1163 -l 1e6 -gy 0 -nx 48 -ny 48 -dt 0.01 -tend 2 -every 1 -out rigid2/N48_Ra1750.txt
+FreeFem++-nw nsb.edp -Ra 1800 -k 3.1163 -l 1e6 -gy 0 -nx 48 -ny 48 -dt 0.01 -tend 2 -every 1 -out rigid2/N48_Ra1800.txt
+FreeFem++-nw nsb.edp -Ra 1710 -k 3.1163 -l 1e6 -gy 0 -nx 48 -ny 48 -dt 0.01 -tend 2 -every 1 -out rigid2/N48_Ra1710.txt   # extra point just above onset (Figure onset (b))
+#
+# Section 6.2: the finite-slip approximation, Ra_c at k = 3.1163 for l/nu = 1e2 ... 1e5 (32x32 graded);
+# the values for l/nu = 1e6 are the rigid2/N32_* runs above. Ra_c values: python3 tables/slip_rac.py
+FreeFem++-nw nsb.edp -Ra 1650 -k 3.1163 -l 1e2 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e2_Ra1650.txt
+FreeFem++-nw nsb.edp -Ra 1700 -k 3.1163 -l 1e2 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e2_Ra1700.txt
+FreeFem++-nw nsb.edp -Ra 1750 -k 3.1163 -l 1e2 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e2_Ra1750.txt
+FreeFem++-nw nsb.edp -Ra 1800 -k 3.1163 -l 1e2 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e2_Ra1800.txt
+FreeFem++-nw nsb.edp -Ra 1650 -k 3.1163 -l 1e3 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e3_Ra1650.txt
+FreeFem++-nw nsb.edp -Ra 1700 -k 3.1163 -l 1e3 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e3_Ra1700.txt
+FreeFem++-nw nsb.edp -Ra 1750 -k 3.1163 -l 1e3 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e3_Ra1750.txt
+FreeFem++-nw nsb.edp -Ra 1800 -k 3.1163 -l 1e3 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e3_Ra1800.txt
+FreeFem++-nw nsb.edp -Ra 1650 -k 3.1163 -l 1e4 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e4_Ra1650.txt
+FreeFem++-nw nsb.edp -Ra 1700 -k 3.1163 -l 1e4 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e4_Ra1700.txt
+FreeFem++-nw nsb.edp -Ra 1750 -k 3.1163 -l 1e4 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e4_Ra1750.txt
+FreeFem++-nw nsb.edp -Ra 1800 -k 3.1163 -l 1e4 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e4_Ra1800.txt
+FreeFem++-nw nsb.edp -Ra 1650 -k 3.1163 -l 1e5 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e5_Ra1650.txt
+FreeFem++-nw nsb.edp -Ra 1700 -k 3.1163 -l 1e5 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e5_Ra1700.txt
+FreeFem++-nw nsb.edp -Ra 1750 -k 3.1163 -l 1e5 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e5_Ra1750.txt
+FreeFem++-nw nsb.edp -Ra 1800 -k 3.1163 -l 1e5 -gy 0 -nx 32 -ny 32 -dt 0.01 -tend 2 -every 1 -out slipcheck/l1e5_Ra1800.txt
+#
+# Section 6.3, Table 5 (left): steady free-slip rolls, Ra = r Ra_c.
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -nx 24 -ny 24 -Ra 670.6615917691066 -out rolls/fs_r1.02.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -Ra 670.6615917691066 -nx 32 -ny 32 -out rolls/fs_r1.02_N32.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -nx 24 -ny 24 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -Ra 690.3869327034921 -out rolls/fs_r1.05.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -nx 32 -ny 32 -Ra 690.3869327034921 -out rolls/fs_r1.05_N32.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -nx 24 -ny 24 -Ra 723.262500927468 -out rolls/fs_r1.1.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -nx 32 -ny 32 -Ra 723.262500927468 -out rolls/fs_r1.1_N32.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -nx 24 -ny 24 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -Ra 789.0136373754195 -out rolls/old/fs_r1.2.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -nx 32 -ny 32 -Ra 789.0136373754195 -out rolls/fs_r1.2_N32.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.01 -C 100 -tend 60 -Tamp 0.01 -every 50 -nx 32 -ny 32 -Ra 986.2670467192745 -out rolls/fs_r1.5_N32.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.01 -C 100 -tend 60 -Tamp 0.01 -every 50 -nx 32 -ny 32 -Ra 1315.0227289590325 -out rolls/fs_r2_N32.txt
+#
+# Section 6.3, Table 5 (right) and Figure 4(a): steady rigid-wall rolls; rg5000_N48 is the 48x48 mesh check.
+FreeFem++-nw nsb.edp -k 3.117 -l 1e6 -gy 0 -C 100 -Tamp 0.1 -every 20 -Ra 10000 -nx 32 -ny 32 -dt 1e-3 -tend 4 -out rolls/rg10000_N32.txt
+FreeFem++-nw nsb.edp -k 3.117 -l 1e6 -gy 0 -C 100 -Tamp 0.1 -every 20 -Ra 3000 -nx 32 -ny 32 -dt 2e-3 -tend 4 -out rolls/rg3000_N32.txt
+FreeFem++-nw nsb.edp -k 3.117 -l 1e6 -gy 0 -C 100 -Tamp 0.1 -every 20 -Ra 5000 -nx 32 -ny 32 -dt 2e-3 -tend 4 -save rolls/rg5000_N32.dat -out rolls/rg5000_N32.txt
+FreeFem++-nw nsb.edp -k 3.117 -l 1e6 -gy 0 -C 100 -Tamp 0.1 -every 20 -Ra 5000 -nx 48 -ny 48 -dt 2e-3 -tend 4 -out rolls/rg5000_N48.txt
+#
+# Section 6.3 (failed attempts) and Section 6.5 (faster flows): free-slip rolls at r = 1.5 and 2 with C = 1, dt = 0.02,
+# which give a spurious periodic cycle (r = 1.5) and a blow-up (r = 2).
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -nx 32 -ny 32 -Ra 986.2665 -C 1 -out rolls/old/fs_r1.5_N32_C1_dt0.02_spurious.txt
+FreeFem++-nw nsb.edp -k 2.221441469079183 -l 0 -dt 0.02 -tend 60 -Tamp 0.01 -every 50 -nx 32 -ny 32 -Ra 1315.022 -C 1 -out rolls/old/fs_r2_N32_C1_dt0.02_blowup.txt
+#
+# Section 6.4, Table 6 and Figure 5(a): rigid walls, alpha = 3.117, Pr = 0.71 and 7, against Clever and Busse.
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 0.71 -G 7100.0 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -C 1000 -dt 0.001 -tend 3 -out bench/cb_a3.117_P0.71_R10000.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 0.71 -G 1420.0 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -C 100 -dt 0.005 -tend 8 -out bench/cb_a3.117_P0.71_R2000.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 0.71 -G 2130.0 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -C 100 -dt 0.005 -tend 6 -out bench/cb_a3.117_P0.71_R3000.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 0.71 -G 3550.0 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -C 100 -dt 0.002 -tend 4 -out bench/cb_a3.117_P0.71_R5000.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 7.0 -G 70000.0 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -C 1000 -dt 0.001 -tend 3 -out bench/cb_a3.117_P7.0_R10000.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 7.0 -G 14000.0 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -C 100 -dt 0.005 -tend 8 -out bench/cb_a3.117_P7.0_R2000.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 7.0 -G 21000.0 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -C 100 -dt 0.005 -tend 6 -out bench/cb_a3.117_P7.0_R3000.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 7.0 -G 35000.0 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -C 100 -dt 0.002 -tend 4 -out bench/cb_a3.117_P7.0_R5000.txt
+#
+# Section 6.4: mesh independence of these Nusselt numbers at Ra = 1e4 (48x48).
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 0.71 -G 7100.0 -k 3.117 -l 1e6 -gy 0 -nx 48 -ny 48 -C 1000 -dt 0.001 -tend 3 -out slipcheck/cb48_P0.71_R10000.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 7.0 -G 70000.0 -k 3.117 -l 1e6 -gy 0 -nx 48 -ny 48 -C 1000 -dt 0.001 -tend 3 -out slipcheck/cb48_P7.0_R10000.txt
+#
+# Section 6.4, Table 7, Figure 5(b) and Figure 4(b): free-slip cells, Pr = 6.8, against Veronis and Moore and Weiss.
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 6.8 -G 4918.185006306782 -k 2.221441469079183 -l 0 -nx 32 -ny 32 -C 1000 -dt 0.01 -tend 25 -out bench/mw_r1.1.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 6.8 -G 5365.292734152853 -k 2.221441469079183 -l 0 -nx 32 -ny 32 -C 1000 -dt 0.01 -tend 15 -out bench/mw_r1.2.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 6.8 -G 6259.508189844994 -k 2.221441469079183 -l 0 -nx 32 -ny 32 -C 1000 -dt 0.01 -tend 10 -out bench/mw_r1.4.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 6.8 -G 44710.77278460711 -k 2.221441469079183 -l 0 -nx 48 -ny 32 -C 1000 -dt 2.5e-4 -tend 1.5 -save bench/mw_r10.dat -out bench/mw_r10.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 6.8 -G 8942.154556921421 -k 2.221441469079183 -l 0 -nx 32 -ny 32 -C 1000 -dt 0.005 -tend 8 -out bench/mw_r2.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 6.8 -G 13413.231835382132 -k 2.221441469079183 -l 0 -nx 32 -ny 32 -C 1000 -dt 0.002 -tend 5 -out bench/mw_r3.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 6.8 -G 17884.309113842843 -k 2.221441469079183 -l 0 -nx 32 -ny 32 -C 1000 -dt 0.002 -tend 5 -out bench/mw_r4.txt
+FreeFem++-nw nsb.edp -kap 1 -Tamp 0.1 -every 20 -nu 6.8 -G 26826.463670764264 -k 2.221441469079183 -l 0 -nx 48 -ny 32 -C 1000 -dt 5e-4 -tend 2 -save bench/mw_r6.dat -out bench/mw_r6.txt
+#
+# Section 6.5, Tables 8 and 9, Figure 2(b) and Figure 6(a,b): Ra = 5000, rigid walls, 32x32 mesh, t in [0, 4].
+# Relaxed, C = 100.
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -dt 1.2e-2 -out dt/C100_rel_dt1.2e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -dt 1.6e-2 -out dt/C100_rel_dt1.6e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -dt 1e-3 -out dt/C100_rel_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -dt 2e-3 -out dt/C100_rel_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -dt 3e-3 -out dt/C100_rel_dt3e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -dt 4e-3 -out dt/C100_rel_dt4e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -dt 5e-4 -out dt/C100_rel_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -dt 6e-3 -out dt/C100_rel_dt6e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -dt 8e-3 -out dt/C100_rel_dt8e-3.txt
+#
+# Unrelaxed, C = 100 (Tables 8 and 9, Figure 2(b)).
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -eta -1 -dt 1.2e-2 -out dt/C100_unrel_dt1.2e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -eta -1 -dt 1.6e-2 -out dt/C100_unrel_dt1.6e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -eta -1 -dt 1e-3 -out dt/C100_unrel_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -eta -1 -dt 2e-3 -out dt/C100_unrel_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -eta -1 -dt 3e-3 -out dt/C100_unrel_dt3e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -eta -1 -dt 4e-3 -out dt/C100_unrel_dt4e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -eta -1 -dt 5e-4 -out dt/C100_unrel_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -eta -1 -dt 6e-3 -out dt/C100_unrel_dt6e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 100 -eta -1 -dt 8e-3 -out dt/C100_unrel_dt8e-3.txt
+#
+# Relaxed, C = 1 (Tables 8 and 9, Figure 2(b), Figure 6; dt = 4e-3 is the run of Figure 6(c,d)).
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1.2e-2 -out dt/C1_rel_dt1.2e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1.6e-2 -out dt/C1_rel_dt1.6e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1e-3 -out dt/C1_rel_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 2e-3 -out dt/C1_rel_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 3e-3 -out dt/C1_rel_dt3e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 4e-3 -out dt/C1_rel_dt4e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 5e-4 -out dt/C1_rel_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 6e-3 -out dt/C1_rel_dt6e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 8e-3 -out dt/C1_rel_dt8e-3.txt
+#
+# Unrelaxed, C = 1 (Tables 8 and 9, Figure 2(b)).
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -eta -1 -dt 1.2e-2 -out dt/C1_unrel_dt1.2e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -eta -1 -dt 1.6e-2 -out dt/C1_unrel_dt1.6e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -eta -1 -dt 1e-3 -out dt/C1_unrel_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -eta -1 -dt 2e-3 -out dt/C1_unrel_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -eta -1 -dt 3e-3 -out dt/C1_unrel_dt3e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -eta -1 -dt 4e-3 -out dt/C1_unrel_dt4e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -eta -1 -dt 5e-4 -out dt/C1_unrel_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -eta -1 -dt 6e-3 -out dt/C1_unrel_dt6e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -eta -1 -dt 8e-3 -out dt/C1_unrel_dt8e-3.txt
+#
+# Section 6.5 and Figure 6(b): relaxed, C = 1e4 (the deviation of the computational scalar, and the explicit-convection limit).
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 32 -ny 32 -C 1e4 -dt 1.2e-2 -out dt/C1e4_rel_dt1.2e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 32 -ny 32 -C 1e4 -dt 1e-2 -out dt/C1e4_rel_dt1e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 32 -ny 32 -C 1e4 -dt 3e-3 -out dt/C1e4_rel_dt3e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 32 -ny 32 -C 1e4 -dt 4e-3 -out dt/C1e4_rel_dt4e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 32 -ny 32 -C 1e4 -dt 6e-3 -out dt/C1e4_rel_dt6e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 32 -ny 32 -C 1e4 -dt 8e-3 -out dt/C1e4_rel_dt8e-3.txt
+#
+# Section 6.5: the C = 1 failure at dt = 4e-3 is the same on the 24x24 and 48x48 meshes.
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 24 -ny 24 -C 1 -dt 3e-3 -out dt/grid_N24_C1_rel_dt3e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 24 -ny 24 -C 1 -dt 4e-3 -out dt/grid_N24_C1_rel_dt4e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 48 -ny 48 -C 1 -dt 3e-3 -out dt/grid_N48_C1_rel_dt3e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -Tamp 0.1 -tend 4 -every 5 -nx 48 -ny 48 -C 1 -dt 4e-3 -out dt/grid_N48_C1_rel_dt4e-3.txt
+#
+# Section 6.5, Table 9 and Figure 2(b): reference run for the kinetic energy at t = 0.2 (dt = 3.125e-5, C = 100).
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -every 5 -C 100 -dt 3.125e-5 -tend 0.2 -out dt/ref_t02.txt
+#
+# Section 6.5, Figure 7 and the fitted exponents: scaling of the deviation of the computational scalar with E/C.
+# Rigid walls, 32x32 mesh, relaxed scheme; Ra = 2000, 3000, 5000, 1e4, 2e4, C = 1 and 100, dt = 2.5e-4 ... 2e-3.
+# These runs use -fastint 1 (the same values up to round-off, faster). postprocess.sh then runs
+# scaling/post_scaling.py, which writes fig_scaling.pdf and prints the fit (text_scaling_fit.txt).
+FreeFem++-nw nsb.edp -Ra 2000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2.5e-4 -tend 1.5 -every 5 -fastint 1 -out scaling/Ra2000_C1_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 2000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 5e-4 -tend 1.5 -every 5 -fastint 1 -out scaling/Ra2000_C1_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 2000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 1e-3 -tend 1.5 -every 5 -fastint 1 -out scaling/Ra2000_C1_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 2000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2e-3 -tend 1.5 -every 5 -fastint 1 -out scaling/Ra2000_C1_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 2000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2.5e-4 -tend 1.5 -every 5 -fastint 1 -out scaling/Ra2000_C100_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 2000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 5e-4 -tend 1.5 -every 5 -fastint 1 -out scaling/Ra2000_C100_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 2000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 1e-3 -tend 1.5 -every 5 -fastint 1 -out scaling/Ra2000_C100_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 2000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2e-3 -tend 1.5 -every 5 -fastint 1 -out scaling/Ra2000_C100_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 3000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2.5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra3000_C1_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 3000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra3000_C1_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 3000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 1e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra3000_C1_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 3000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra3000_C1_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 3000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2.5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra3000_C100_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 3000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra3000_C100_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 3000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 1e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra3000_C100_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 3000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra3000_C100_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2.5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra5000_C1_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra5000_C1_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 1e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra5000_C1_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra5000_C1_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2.5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra5000_C100_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra5000_C100_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 1e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra5000_C100_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra5000_C100_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 10000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2.5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra10000_C1_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 10000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra10000_C1_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 10000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 1e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra10000_C1_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 10000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra10000_C1_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 10000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2.5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra10000_C100_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 10000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra10000_C100_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 10000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 1e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra10000_C100_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 10000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra10000_C100_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 20000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2.5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra20000_C1_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 20000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra20000_C1_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 20000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 1e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra20000_C1_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 20000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 1 -dt 2e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra20000_C1_dt2e-3.txt
+FreeFem++-nw nsb.edp -Ra 20000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2.5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra20000_C100_dt2.5e-4.txt
+FreeFem++-nw nsb.edp -Ra 20000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 5e-4 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra20000_C100_dt5e-4.txt
+FreeFem++-nw nsb.edp -Ra 20000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 1e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra20000_C100_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 20000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 2e-3 -tend 0.5 -every 5 -fastint 1 -out scaling/Ra20000_C100_dt2e-3.txt
+#
+# Section 6.5: the kinetic and thermal parts of R^{n+1} ("# RPARTS" line of each log), one run per Rayleigh number,
+# C = 100 (dt = 1e-3; 5e-4 at Ra = 2e4, where 1e-3 blows up). Collected in text_scaling_rparts.txt by postprocess.sh.
+FreeFem++-nw nsb.edp -Ra 2000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 1e-3 -tend 1.5 -every 5 -rparts 1 -out scaling_rparts/Ra2000_C100_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 3000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 1e-3 -tend 0.5 -every 5 -rparts 1 -out scaling_rparts/Ra3000_C100_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 1e-3 -tend 0.5 -every 5 -rparts 1 -out scaling_rparts/Ra5000_C100_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 10000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 1e-3 -tend 0.5 -every 5 -rparts 1 -out scaling_rparts/Ra10000_C100_dt1e-3.txt
+FreeFem++-nw nsb.edp -Ra 20000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -C 100 -dt 5e-4 -tend 0.5 -every 5 -rparts 1 -out scaling_rparts/Ra20000_C100_dt5e-4.txt
+#
+# Section 6.7, Table 10: energy decay without heating, A = 1 and A = 5e5.
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -out decay/A1_dt1e-2.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-3 -out decay/A1_dt1e-3.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-4 -out decay/A1_dt1e-4.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 5e5 -dt 1e-2 -out decay/A5e5_dt1e-2.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 5e5 -dt 1e-3 -out decay/A5e5_dt1e-3.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 5e5 -dt 1e-4 -out decay/A5e5_dt1e-4.txt
+#
+# Section 6.8, Table 11: relaxation parameter eta, C = 1, Ra = 5000. dt = 1e-3:
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1e-3 -eta 0.5 -out eta/C1_dt1e-3_eta0.5.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1e-3 -eta 0.99 -out eta/C1_dt1e-3_eta0.99.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1e-3 -eta 0 -out eta/C1_dt1e-3_eta0.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1e-3 -eta 1e-2 -out eta/C1_dt1e-3_eta1e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1e-3 -eta 1e-4 -out eta/C1_dt1e-3_eta1e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1e-3 -eta 1e-6 -out eta/C1_dt1e-3_eta1e-6.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 1e-3 -eta 1e-8 -out eta/C1_dt1e-3_eta1e-8.txt
+# dt = 3e-3:
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 3e-3 -eta 0.5 -out eta/C1_dt3e-3_eta0.5.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 3e-3 -eta 0.99 -out eta/C1_dt3e-3_eta0.99.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 3e-3 -eta 0 -out eta/C1_dt3e-3_eta0.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 3e-3 -eta 1e-2 -out eta/C1_dt3e-3_eta1e-2.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 3e-3 -eta 1e-4 -out eta/C1_dt3e-3_eta1e-4.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 3e-3 -eta 1e-6 -out eta/C1_dt3e-3_eta1e-6.txt
+FreeFem++-nw nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.1 -tend 4 -every 5 -C 1 -dt 3e-3 -eta 1e-8 -out eta/C1_dt3e-3_eta1e-8.txt
+#
+# Section 6.8, Table 11 (last column): eta sweep of the decay test.
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -eta 0.5 -out eta/decay_eta0.5.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -eta 0.95 -out eta/decay_eta0.95.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -eta 0.99 -out eta/decay_eta0.99.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -eta 0 -out eta/decay_eta0.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -eta 1e-2 -out eta/decay_eta1e-2.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -eta 1e-4 -out eta/decay_eta1e-4.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -eta 1e-6 -out eta/decay_eta1e-6.txt
+FreeFem++-nw nsb.edp -G 3000 -Tb 0.5 -Tt 0.5 -Tref 0.5 -k 3.117 -l 1e6 -gy 0 -nx 32 -ny 32 -Tamp 0.2 -tend 0.5 -X 1 -every 1 -A 1 -dt 1e-2 -eta 1e-8 -out eta/decay_eta1e-8.txt
+#
+# Section 6.8: eta sweep of the manufactured solution, dt = 0.0125 (eta = -1: no relaxation). The errors for
+# eta in {0.5, 0.9, 0.95, 0.99} coincide to all twelve digits shown, and eta = 0 reproduces the unrelaxed values.
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.0125 -tend 0.5 -eta 0.5 -out eta_mms/mms_eta0.5.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.0125 -tend 0.5 -eta 0.9 -out eta_mms/mms_eta0.9.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.0125 -tend 0.5 -eta 0.95 -out eta_mms/mms_eta0.95.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.0125 -tend 0.5 -eta 0.99 -out eta_mms/mms_eta0.99.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.0125 -tend 0.5 -eta 0 -out eta_mms/mms_eta0.txt
+FreeFem++-nw nsb.edp -mms 1 -y0 -1 -y1 1 -Lx 6.283185307179586 -nu 0.1 -kap 0.05 -G 1 -l 1 -every 100000 -nx 40 -ny 40 -rot 1 -dt 0.0125 -tend 0.5 -eta -1 -out eta_mms/mms_eta-1.txt
+#
+# Section 6.9 and Figure 8: Ra = 1e6 stress test; the failed first attempt (dt = 1e-5, C = 1e5) and the reported run
+# (dt = 2e-6, C = 1e6).
+FreeFem++-nw nsb.edp -Ra 1e6 -Lx 4 -l 1e6 -gy 0 -nx 128 -ny 48 -dt 1e-5 -tend 0.1 -C 1e5 -Tamp 1e-2 -noise 1 -every 10 -snap 500 -snapu 1 -out ra1e6_first/ra1e6.txt   #@long  (failed first attempt)
+FreeFem++-nw nsb.edp -Ra 1e6 -Lx 4 -l 1e6 -gy 0 -nx 128 -ny 48 -dt 2e-6 -tend 0.03 -C 1e6 -Tamp 1e-2 -noise 1 -every 50 -snap 750 -snapu 1 -out ra1e6/ra1e6b.txt   #@long  (Section 6.9: the reported run; figure tables/fig_ra1e6.py)
+#
+# Section 6.2 (check, not reported in a table): direct eigenvalue computation of the onset with eig.edp
+# (FreeFEM + ARPACK), without time-stepping.
+for Ra in 650 660 700 1000; do FreeFem++-nw eig.edp -Ra $Ra -nx 16 -ny 16 2>/dev/null | grep "^EIG"; done > eig/fs_sigma_N16.txt
+FreeFem++-nw eig.edp -rac 1 -Ra0 650 -Ra1 670 -nx 16 -ny 16 2>/dev/null | grep "^RAC" > eig/fs_rac_N16.txt   # free slip: Ra_c vs 27 pi^4/4
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -l 1e6 -gy 0 -nx 16 -ny 16 2>/dev/null | grep "^RAC" > eig/rg_rac_N16.txt   # Navier, l/nu = 1e6
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -noslip 1 -gy 0 -nx 16 -ny 16 2>/dev/null | grep "^RAC" > eig/ns_rac_N16.txt   # u_x = 0 imposed
+for Ra in 650 660 700 1000; do FreeFem++-nw eig.edp -Ra $Ra -nx 24 -ny 24 2>/dev/null | grep "^EIG"; done > eig/fs_sigma_N24.txt
+FreeFem++-nw eig.edp -rac 1 -Ra0 650 -Ra1 670 -nx 24 -ny 24 2>/dev/null | grep "^RAC" > eig/fs_rac_N24.txt   # free slip: Ra_c vs 27 pi^4/4
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -l 1e6 -gy 0 -nx 24 -ny 24 2>/dev/null | grep "^RAC" > eig/rg_rac_N24.txt   # Navier, l/nu = 1e6
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -noslip 1 -gy 0 -nx 24 -ny 24 2>/dev/null | grep "^RAC" > eig/ns_rac_N24.txt   # u_x = 0 imposed
+for Ra in 650 660 700 1000; do FreeFem++-nw eig.edp -Ra $Ra -nx 32 -ny 32 2>/dev/null | grep "^EIG"; done > eig/fs_sigma_N32.txt
+FreeFem++-nw eig.edp -rac 1 -Ra0 650 -Ra1 670 -nx 32 -ny 32 2>/dev/null | grep "^RAC" > eig/fs_rac_N32.txt   # free slip: Ra_c vs 27 pi^4/4
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -l 1e6 -gy 0 -nx 32 -ny 32 2>/dev/null | grep "^RAC" > eig/rg_rac_N32.txt   # Navier, l/nu = 1e6
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -noslip 1 -gy 0 -nx 32 -ny 32 2>/dev/null | grep "^RAC" > eig/ns_rac_N32.txt   # u_x = 0 imposed
+for Ra in 650 660 700 1000; do FreeFem++-nw eig.edp -Ra $Ra -nx 48 -ny 48 2>/dev/null | grep "^EIG"; done > eig/fs_sigma_N48.txt
+FreeFem++-nw eig.edp -rac 1 -Ra0 650 -Ra1 670 -nx 48 -ny 48 2>/dev/null | grep "^RAC" > eig/fs_rac_N48.txt   # free slip: Ra_c vs 27 pi^4/4
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -l 1e6 -gy 0 -nx 48 -ny 48 2>/dev/null | grep "^RAC" > eig/rg_rac_N48.txt   # Navier, l/nu = 1e6
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -noslip 1 -gy 0 -nx 48 -ny 48 2>/dev/null | grep "^RAC" > eig/ns_rac_N48.txt   # u_x = 0 imposed
+for Ra in 650 660 700 1000; do FreeFem++-nw eig.edp -Ra $Ra -nx 64 -ny 64 2>/dev/null | grep "^EIG"; done > eig/fs_sigma_N64.txt
+FreeFem++-nw eig.edp -rac 1 -Ra0 650 -Ra1 670 -nx 64 -ny 64 2>/dev/null | grep "^RAC" > eig/fs_rac_N64.txt   # free slip: Ra_c vs 27 pi^4/4
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -l 1e6 -gy 0 -nx 64 -ny 64 2>/dev/null | grep "^RAC" > eig/rg_rac_N64.txt   # Navier, l/nu = 1e6
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -noslip 1 -gy 0 -nx 64 -ny 64 2>/dev/null | grep "^RAC" > eig/ns_rac_N64.txt   # u_x = 0 imposed
+for Ra in 650 660 700 1000; do FreeFem++-nw eig.edp -Ra $Ra -nx 96 -ny 96 2>/dev/null | grep "^EIG"; done > eig/fs_sigma_N96.txt
+FreeFem++-nw eig.edp -rac 1 -Ra0 650 -Ra1 670 -nx 96 -ny 96 2>/dev/null | grep "^RAC" > eig/fs_rac_N96.txt   # free slip: Ra_c vs 27 pi^4/4
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -l 1e6 -gy 0 -nx 96 -ny 96 2>/dev/null | grep "^RAC" > eig/rg_rac_N96.txt   # Navier, l/nu = 1e6
+FreeFem++-nw eig.edp -rac 1 -k 3.1163 -noslip 1 -gy 0 -nx 96 -ny 96 2>/dev/null | grep "^RAC" > eig/ns_rac_N96.txt   # u_x = 0 imposed

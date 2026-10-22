@@ -1,0 +1,884 @@
+/*
+
+ nsb.edp -- FreeFem++ code for the scheme from
+"A second-order linear decoupled scheme with a relaxed zero-energy variable for
+ Rayleigh-Benard convection"
+
+//
+
+  BDF2 in time (backward Euler for the first step),
+  extrapolated nonlinear terms and buoyancy,
+  zero-energy variable Q with weight C,
+  rotational pressure correction,
+  relaxation of Q,
+  Navier slip walls (l = 0 free slip, l large ~ no slip),
+  T = conduction profile T_c(y) + perturbation theta.
+
+//
+
+Space: P2 velocity and temperature,
+       P1 pressure (Taylor-Hood),
+       periodic in x,
+       walls y = 0, H.
+
+//
+
+Discrete velocity is only approximately divergence free...
+  so, both nonlinear terms use the skew-symmetric form:
+  b(w,v,z) = 1/2[((w.grad)v,z) - ((w.grad)z,v)],
+  which satisfies b(w,v,v) = 0 for every w;
+  the zero-energy cancellation is then exact.
+
+//
+
+usage: FreeFem++ -nw nsb.edp -Ra 1000 -k 2.2214 -nx 32 -ny 32 -dt 0.01 -tend 2 -l 0 -out run.txt
+
+//
+
+live picture: FreeFem++ nsb.edp -Ra 5000 -k 3.117 -l 1e6 -gy 0 -nx 24 -ny 24 -dt 0.001 -C 100 -tend 2 -Tamp 0.1 -plot 50 -arrows 1
+  (-plot N: every N steps, needs the graphics version FreeFem++, not FreeFem++-nw; -field theta for T - T_c)
+
+//
+
+Units as in paper Section 6.1-6.3: H = 1, nu = kap = 1, G = Ra, Tb = 1, Tt = 0, Tref = 1/2.
+
+//
+
+Log columns: step t Q~ Q Ekin Etheta Nu_bottom Nu_top Nu_vol [E X with -X 1]
+  Nu_vol = 1 + <u_y theta>/(kap |T_c'|), equal to the wall values for a steady state and much less mesh dependent.
+
+//
+
+Final lines: "# SUMMARY ..." (range of Q~ and Q, final Ekin and Nu, blow-up step, largest one-step change of X^n),
+  "# MMS ..." (errors against the manufactured solution, -mms 1), "# REF ..." (L2 differences from a saved state, -ref F).
+
+//
+
+Further options:
+ -Tb -Tt -Tref wall and reference temperatures;
+ -X 1 energy X^n of Theorem 4.2(a);
+ -save F / -init F / -ref F final fields (same mesh and options);
+ -rot 0 standard incremental pressure correction;
+ -mms 1 -y0 -y1 -Lx -nu -kap -G: manufactured solution of Section 6.1. A run stops when Ekin > 1e10 ("# blow-up").
+ -noise S: random initial temperature (seed S, amplitude -Tamp);
+ -rparts 1: write the largest kinetic and thermal parts of R^{n+1} over the run ("# RPARTS" line);
+ -timing 1: write the CPU time of the set-up and of the time loop ("# TIME" line);
+ -fastint 1: integrals of the Q equation, the relaxation budget and the kinetic energy from assembled
+   vectors and matrices instead of int2d expressions (same values up to round-off, faster; used by scaling/);
+ -snap N: every N steps write T on a uniform (-snx) x (-sny) grid to <out>.snapNNNN (first line: t, grid, L, min and max of T); see plot_snaps.py.
+
+//
+
+The pressure is the deviation from the hydrostatic pressure of the conduction state (see the comment at the
+  initial state): Taylor-Hood elements are not pressure robust.
+
+  */
+
+// ====== //
+
+/*
+    command-line options "-name value"
+*/
+
+func real argr(string key, real def) {
+    for (int i = 0; i < ARGV.n - 1; i++) {
+        if (ARGV[i] == key) {
+            return atof(ARGV[i+1]);
+        }
+    }
+    return def;
+}
+
+func int argi(string key, int def) {
+    for (int i = 0; i < ARGV.n - 1; i++) {
+        if (ARGV[i] == key) {
+            return atoi(ARGV[i+1]);
+        }
+    }
+    return def;
+}
+
+verbosity = 0;
+
+real cpu0 = clock(); // CPU time at the start (-timing 1)
+
+real Ra = argr("-Ra", 1000.); // Rayleigh number
+real kx = argr("-k", pi/sqrt(2.)); // wave number; cell length L = 2 pi / k
+int nx = argi("-nx", 32); // mesh of nx x ny squares, each split into 2 triangles
+int ny = argi("-ny", 32); // mesh of nx x ny squares, each split into 2 triangles
+real dt = argr("-dt", 0.01); // time step dt
+real tend = argr("-tend", 2.); // ending time
+real l = argr("-l", 0.); // slip coefficient
+real nu = argr("-nu", 1.); // viscosity
+real kap = argr("-kap", 1.); // diffusivity
+real Cq = argr("-C", 1.); // weight C of the Q equation
+real A = argr("-A", 1.); // weight A of the thermal energy
+real eta = argr("-eta", 0.95); // relaxation parameter (eta < 0: no relaxation)
+real Tamp = argr("-Tamp", 1e-6); // initial perturbation amplitude
+real gy = argr("-gy", 1.); // grading of the mesh towards the walls (1 = uniform, 0 cosine grading towards walls)
+int every = argi("-every", 1); // write a log line every # steps
+int noise = argi("-noise", 0); // >0: random initial temperature perturbation (seed = noise) instead of one mode
+int snapevery = argi("-snap", 0); // write T on a uniform grid every so many steps (files <out>.snapNNNN)
+int snx = argi("-snx", 512); // mesh of snx x sny squares
+int sny = argi("-sny", 128); // mesh of snx x sny squares
+int snapu = argi("-snapu", 0); // 1: snapshots also contain u_x, u_y (columns T ux uy)
+int plotevery = argi("-plot", 0); // plot every so many steps (0 = never; needs FreeFem++, not -nw)
+int arrows = argi("-arrows", 0); // 1: draw the velocity field on top of the temperature
+int mms = argi("-mms", 0); // 1: manufactured solution of paper Section 6.1 (forcing, errors)
+int rot = argi("-rot", 1); // 1: rotational pressure correction, 0: standard incremental
+real ybot = argr("-y0", 0.); // lower wall
+real ytop = argr("-y1", 1.); // upper wall
+real Lx = argr("-Lx", 0.); // cell length (default 2 pi / k)
+real Gin = argr("-G", -1.); // buoyancy g*beta (default Ra nu kap)
+real Tbin = argr("-Tb", 1.); // wall and reference temperatures
+real Ttin = argr("-Tt", 0.); // initial temp
+real Trefin = argr("-Tref", 0.5); // reference temp
+int xdiag = argi("-X", 0); // 1: log the energy X^n of Theorem 4.2(a) (and E^n) as extra columns
+int timing = argi("-timing", 0); // 1: write the CPU time of the set-up and of the time loop ("# TIME")
+int fastint = argi("-fastint", 0); // 1: integrals of each step from assembled matrices and vectors (see below)
+int rparts = argi("-rparts", 0); // 1: largest kinetic and thermal parts of R^{n+1} over the run ("# RPARTS" line)
+real rkinmax = 0, rthmax = 0;
+string out = "run.txt"; // log file
+string field = "T"; // -field T (temperature) or theta (perturbation T - T_c)
+string savef = ""; // -save F: write the final fields
+string reff = ""; // -ref F: compare the final fields with those of F
+string loadf = ""; // -init F: start from the fields of F
+for (int i = 0; i < ARGV.n - 1; i++) {
+    if (ARGV[i] == "-out") out = ARGV[i+1];
+    if (ARGV[i] == "-field") field = ARGV[i+1];
+    if (ARGV[i] == "-save") savef = ARGV[i+1];
+    if (ARGV[i] == "-ref") reff = ARGV[i+1];
+    if (ARGV[i] == "-init") loadf = ARGV[i+1];
+}
+
+real G; // buoyancy G
+if (Gin >= 0) {
+    G = Gin;
+}
+else {
+    G = Ra*nu*kap;
+}
+
+real H = ytop - ybot; // channel height H
+
+real L; //cell length L
+if (Lx > 0) {
+    L = Lx;
+}
+else {
+    L = 2*pi/kx;
+}
+
+real Tb = Tbin; // setting temps
+real Tt = Ttin;
+real Tref = Trefin;
+real Tcp = (Tt - Tb)/H; // T_c(y) = Tb + Tcp*(y - ybot)
+
+include "mms.idp" // to call manufactured solns
+
+/*
+ mesh and spaces
+
+labels:
+  * 1 bottom,
+  * 2 right,
+  * 3 top,
+  * 4 left;
+
+  * optional grading towards the walls
+*/
+
+mesh Th = square(nx, ny, [L*x, ybot + H*y]);
+
+// Chebyshev-like spacing (-gy 0)
+// used in rigid-wall simulations
+if (gy != 1.) {
+    Th = square(nx, ny, [L*x, ybot + H*0.5*(1 - cos(pi*y))]);
+}
+
+fespace Vh(Th, P2, periodic=[[2, y], [4, y]]);
+fespace Ph(Th, P1, periodic=[[2, y], [4, y]]);
+
+// u^{n+1}, u^n, u^{n-1}, extrapolation
+Vh ux, uy, ux0, uy0, ux1, uy1, bx, by;
+
+// tilde u = tu_1 + Q~ tu_2
+Vh tx1, ty1, tx2, ty2, tux, tuy;
+
+// theta^{n+1}, theta^n, theta^{n-1}, extrapolation, parts
+Vh th, th0, th1, tb, the1, the2;
+
+// pressure, pressure increment, l2 projection of grad dot u ont P1
+Ph p, p0, phi, q, divu;
+
+/*
+  initial state:
+    u = 0,
+    theta = Tamp*sin(pi (y-ybot)/H)*cos(k x),
+    p = 0.
+*/
+
+ux0 = 0;
+uy0 = 0;
+th0 = Tamp*sin(pi*(y - ybot)/H)*cos(kx*x);
+p0 = 0;
+
+real hyd = 0.; // 1: buoyancy of the conduction state kept in the equations
+if (mms) { // if using method of man. solns
+    hyd = 1.;
+}
+
+if (mms) { // if using method of man. solns
+    ux0 = mmsux(0.);
+    uy0 = mmsuy(0.);
+    th0 = mmsT(0.) - (Tb + Tcp*(y - ybot));
+    p0 = mmsp(0.);
+}
+
+if (loadf != "") { // same mesh and options
+    ifstream f(loadf);
+    f >> ux0[];
+    f >> uy0[];
+    f >> th0[];
+    f >> p0[];
+}
+
+// random values at the nodes, vanishing on the walls
+if (noise > 0 && loadf == "") {
+    randinit(noise);
+    for (int i = 0; i < Vh.ndof; i++) {
+        th0[][i] = Tamp*(2*randreal1() - 1);
+    }
+
+    Vh wf = sin(pi*(y - ybot)/H);
+    th0 = th0*wf;
+}
+
+ux1 = ux0;
+uy1 = uy0;
+th1 = th0;
+
+// snapshots:
+  // T interpolated to a uniform (snx+1) x (sny+1) grid, x fastest;
+  // one text file per snapshot
+
+mesh Thg = square(snx, sny, [L*x, ybot + H*y]);
+fespace Wg(Thg, P1);
+
+int nsnap = 0;
+real tn1 = 0.; // time of the new level (forcing)
+real Q0 = 1.; // stored Q^n
+real Q1 = 1.; // stored Q^{n-1}
+real Qt = 1.; // Q~^{n+1}
+
+// denominators of the Nusselt numbers (Nu undefined without heating, Tb = Tt)
+    // wall form: Nu = 1 + (wall integral of d_y theta)/(Tcp L)
+    real nuden = 1.;
+
+    // volume form: Nu_vol = 1 + <u_y theta>/(kap |T_c'|), exact for steady
+    real nuvden = 1.;
+
+    // states and far less sensitive to h than the wall derivative
+    if (abs(Tcp) > 0) {
+        nuden = Tcp*L;
+        nuvden = -kap*Tcp*L*H;
+    }
+
+// running ranges of Q~ and of the stored Q
+real Qtmin = 1.;
+real Qtmax = 1.;
+real Qmin = 1.;
+real Qmax = 1.;
+
+real Ek = 0.;
+real Xold = -1.; // X^n of the previous step, and the largest one-step change
+real dXmax = -1e300;
+int nblow = -1; // blow-up step (-1: none)
+int ndone = 0; // steps done
+
+/*
+  constant matrices:
+    c0 = 1/dt (Euler) and 3/(2dt) (BDF2),
+    assembled and factorized once
+*/
+
+real c0;
+varf aux(u, v) = int2d(Th)(c0*u*v + nu*(dx(u)*dx(v) + dy(u)*dy(v))) + int1d(Th, 1, 3)(l*u*v);
+varf auy(u, v) = int2d(Th)(c0*u*v + nu*(dx(u)*dx(v) + dy(u)*dy(v))) + on(1, 3, u = 0);
+varf ath(u, v) = int2d(Th)(c0*u*v + kap*(dx(u)*dx(v) + dy(u)*dy(v))) + on(1, 3, u = 0);
+varf apr(u, v) = int2d(Th)(dx(u)*dx(v) + dy(u)*dy(v) + 1e-10*u*v);
+
+varf mv(u, v) = int2d(Th)(u*v);
+varf mvd(u, v) = int2d(Th)(u*v) + on(1, 3, u = 0);
+varf mp(u, v) = int2d(Th)(u*v);
+
+c0 = 1./dt; // first step: backward Euler
+matrix AX1 = aux(Vh, Vh, solver=sparsesolver);
+matrix AY1 = auy(Vh, Vh, solver=sparsesolver);
+matrix AT1 = ath(Vh, Vh, solver=sparsesolver);
+
+c0 = 1.5/dt; // later steps: BDF2
+matrix AX2 = aux(Vh, Vh, solver=sparsesolver);
+matrix AY2 = auy(Vh, Vh, solver=sparsesolver);
+matrix AT2 = ath(Vh, Vh, solver=sparsesolver);
+
+matrix AP = apr(Ph, Ph, solver=sparsesolver);
+
+matrix MV = mv(Vh, Vh, solver=sparsesolver);
+matrix MVD = mvd(Vh, Vh, solver=sparsesolver); // for u_y = 0 on the walls
+matrix MP = mp(Ph, Ph, solver=sparsesolver);
+
+// S = I - cS Laplacian (Neumann),
+// ||q||_M^2 = (grad q, grad S^-1 q)
+real cS = 2*nu*dt/3;
+varf asm(u, v) = int2d(Th)(u*v + cS*(dx(u)*dx(v) + dy(u)*dy(v)));
+matrix SM = asm(Ph, Ph, solver=sparsesolver);
+
+// matrices for -fastint 1:
+// D = nu/2 |curl tu|^2 + l |tu_x|^2_wall and Ekin = 1/2 |u|^2 as quadratic forms
+matrix KXX;
+matrix KYY;
+matrix KXY;
+matrix MW;
+if (fastint) {
+    varf kxx(u, v) = int2d(Th)(dx(u)*dx(v));
+    varf kyy(u, v) = int2d(Th)(dy(u)*dy(v));
+    varf kxy(u, v) = int2d(Th)(dy(u)*dx(v)); // (dx(v_y), dy(u_x)) for u = tu_x, v = tu_y
+    varf mw(u, v) = int1d(Th, 1, 3)(u*v);
+    KXX = kxx(Vh, Vh);
+    KYY = kyy(Vh, Vh);
+    KXY = kxy(Vh, Vh);
+    MW = mw(Vh, Vh);
+}
+
+real CP = H/pi; // Poincare constant
+real Bp = G^2*CP^4/(2*nu) + dt*G^2*CP^2/3; // B' of Theorem 4.2(a)
+
+/*
+ right-hand sides (on(1,3,...) sets the Dirichlet values through the same tgv)
+*/
+
+real a1; // BDF coefficients of u^n, u^{n-1} in the time derivative
+real a2;
+
+real Qs; // coefficient used by the pressure step
+
+// part 1 (no Q):
+// time history, pressure, buoyancy (explicit, extrapolated)
+varf rx1(u, v) = int2d(Th)((a1*ux0 + a2*ux1)*v - dx(p0)*v);
+varf ry1(u, v) = int2d(Th)((a1*uy0 + a2*uy1)*v - dy(p0)*v + G*(hyd*(Tb + Tcp*(y - ybot) - Tref) + tb)*v) + on(1, 3, u = 0);
+varf rt1(u, v) = int2d(Th)((a1*th0 + a2*th1)*v - Tcp*by*v) + on(1, 3, u = 0);
+
+// manufactured-solution forcing at t^{n+1}
+// (bulk, and the slip condition l u_x + nu d_n u_x = Sw)
+varf fx(u, v) = int2d(Th)(mmsSux(tn1)*v) + int1d(Th, 1)(mmsSwbot(tn1)*v) + int1d(Th, 3)(mmsSwtop(tn1)*v);
+varf fy(u, v) = int2d(Th)(mmsSuy(tn1)*v) + on(1, 3, u = 0);
+varf ft(u, v) = int2d(Th)(mmsST(tn1)*v) + on(1, 3, u = 0);
+
+// part 2 (multiplied by Q~):
+// minus the skew-symmetric convection / advection
+varf rx2(u, v) = int2d(Th)(-0.5*((bx*dx(bx) + by*dy(bx))*v - (bx*dx(v) + by*dy(v))*bx));
+varf ry2(u, v) = int2d(Th)(-0.5*((bx*dx(by) + by*dy(by))*v - (bx*dx(v) + by*dy(v))*by)) + on(1, 3, u = 0);
+varf rt2(u, v) = int2d(Th)(-0.5*((bx*dx(tb) + by*dy(tb))*v - (bx*dx(v) + by*dy(v))*tb)) + on(1, 3, u = 0);
+
+// Step 2:
+// pressure increment, divergence, projection of the new velocity
+varf rpr(u, v) = int2d(Th)(-Qs*(dx(tux) + dy(tuy))*v);
+varf rdiv(u, v) = int2d(Th)((dx(tux) + dy(tuy))*v);
+varf rpx(u, v) = int2d(Th)((tux - Qs*dx(phi))*v);
+varf rpy(u, v) = int2d(Th)((tuy - Qs*dy(phi))*v) + on(1, 3, u = 0);
+
+// skew-symmetric trilinear forms needed by the Q equation
+// b(w,w,z), velocity
+macro bvel(wx, wy, zx, zy) int2d(Th)(0.5*((wx*dx(wx) + wy*dy(wx))*zx + (wx*dx(wy) + wy*dy(wy))*zy - (wx*dx(zx) + wy*dy(zx))*wx - (wx*dx(zy) + wy*dy(zy))*wy))  // end of macro
+
+// b(w,s,z), temperature
+macro bth(wx, wy, s, z) int2d(Th)(0.5*((wx*dx(s) + wy*dy(s))*z - (wx*dx(z) + wy*dy(z))*s)) // end of macro
+
+// ====== //
+
+/*
+  log file
+*/
+ofstream fout(out);
+
+fout << "# FreeFem++ nsb.edp  Ra=" << Ra << " k=" << kx << " nx=" << nx << " ny=" << ny << " dt=" << dt
+     << " l=" << l << " C=" << Cq << " A=" << A << " eta=" << eta << endl;
+fout << "# step t Qtilde Q Ekin Etheta Nu_bottom Nu_top Nu_vol";
+
+if (xdiag) {
+    fout << " E X";
+}
+
+fout << endl;
+fout.precision(12);
+
+// ====== //
+
+/*
+    time loop
+*/
+int nt = lrint(tend/dt);
+real cpu1 = clock(); // end of the set-up
+for (int n = 0; n < nt; n++) {
+    bool first = (n == 0);
+    real cd; // coefficient of the new value
+    if (first) { // backward Euler: history u^n, extrapolation u^n
+        cd = 1./dt;
+        a1 = 1./dt;
+        a2 = 0.;
+        bx = ux0;
+        by = uy0;
+        tb = th0;
+    }
+    else { // BDF2:
+      // history 2u^n - u^{n-1}/2, extrapolation 2u^n - u^{n-1}
+        cd = 1.5/dt;
+        a1 = 2./dt;
+        a2 = -0.5/dt;
+        bx = 2*ux0 - ux1;
+        by = 2*uy0 - uy1;
+        tb = 2*th0 - th1;
+    }
+    tn1 = (n + 1)*dt;
+
+    // ---- Step 1:
+    //  two solves with the same matrix for each field (part 1, part 2)
+    real[int] b(Vh.ndof);
+    real[int] bf(Vh.ndof);
+
+    // right-hand sides of part 2, kept for the Q equation with -fastint 1
+    real[int] cx2(Vh.ndof);
+    real[int] cy2(Vh.ndof);
+    real[int] ct2(Vh.ndof);
+
+    b = rx1(0, Vh); // u_x, part 1
+
+    if (mms) {
+        bf = fx(0, Vh);
+        b += bf;
+    }
+
+    if (first) {
+        tx1[] = AX1^-1*b;
+    }
+    else {
+        tx1[] = AX2^-1*b;
+    }
+
+    b = ry1(0, Vh); // u_y, part 1
+    if (mms) {
+        bf = fy(0, Vh);
+        b += bf;
+    }
+    if (first) {
+        ty1[] = AY1^-1*b;
+    }
+    else {
+        ty1[] = AY2^-1*b;
+    }
+
+    b = rt1(0, Vh); // theta, part 1
+    if (mms) {
+        bf = ft(0, Vh);
+        b += bf;
+    }
+    if (first) {
+        the1[] = AT1^-1*b;
+    }
+    else {
+        the1[] = AT2^-1*b;
+    }
+
+    b = rx2(0, Vh);  // u_x, part 2
+    cx2 = b;
+    if (first) {
+        tx2[] = AX1^-1*b;
+    }
+    else {
+        tx2[] = AX2^-1*b;
+    }
+
+    b = ry2(0, Vh); // u_y, part 2
+    cy2 = b;
+    if (first) {
+        ty2[] = AY1^-1*b;
+    }
+    else {
+        ty2[] = AY2^-1*b;
+    }
+
+    b = rt2(0, Vh); // theta, part 2
+    ct2 = b;
+    if (first) {
+        the2[] = AT1^-1*b;
+    }
+    else {
+        the2[] = AT2^-1*b;
+    }
+
+    // ---- Q equation:
+    /*
+        C (c_new Q~ - c1 Q^n - c2 Q^{n-1})
+        = b(u,u,tu1) + Q~ b(u,u,tu2) + A[b(u,t,th1) + Q~ b(u,t,th2)]
+    */
+
+    real I1;
+    real I2;
+    if (fastint) {
+        // the part-2 right-hand sides are minus b(u,u,.) and b(u,t,.) tested with each basis function
+        I1 = -(cx2'*tx1[]) - (cy2'*ty1[]) - A*(ct2'*the1[]);
+        I2 = -(cx2'*tx2[]) - (cy2'*ty2[]) - A*(ct2'*the2[]);
+    } else {
+        I1 = bvel(bx, by, tx1, ty1) + A*bth(bx, by, tb, the1);
+        I2 = bvel(bx, by, tx2, ty2) + A*bth(bx, by, tb, the2);
+    }
+    real hist;
+
+    if (first) {
+        hist = Cq*Q0/dt;
+    }
+    else {
+        hist = Cq*(2.*Q0 - 0.5*Q1)/dt;
+    }
+
+
+    Qt = (hist + I1)/(Cq*cd - I2);
+    tux = tx1 + Qt*tx2;
+    tuy = ty1 + Qt*ty2;
+    th = the1 + Qt*the2;
+    if (rparts) { // R^{n+1} = b(u,u,tu) + A b(u,t,theta), since b(u,u,u) = b(u,t,t) = 0
+        rkinmax = max(rkinmax, abs(bvel(bx, by, tux, tuy)));
+        rthmax = max(rthmax, abs(A*bth(bx, by, tb, th)));
+    }
+
+    // ---- Step 2:
+    // rotational pressure correction
+
+    real[int] bp(Ph.ndof);
+
+    Qs = cd;
+    bp = rpr(0, Ph);
+    phi[] = AP^-1*bp;
+
+    real mphi = int2d(Th)(phi)/(L*H);
+
+    phi = phi - mphi;
+    bp = rdiv(0, Ph);
+    divu[] = MP^-1*bp;
+
+    if (rot) {
+        p = p0 + phi - nu*divu;
+    }
+    else {
+        p = p0 + phi;
+    }
+
+    Qs = 1./cd;
+    b = rpx(0, Vh); // L2 projection of tu - grad(phi)/c_new onto P2
+    ux[] = MV^-1*b;
+    b = rpy(0, Vh);
+    uy[] = MVD^-1*b;
+
+    // ---- Step 3: relaxation
+    /*
+        Q^{n+1} = xi Q~ + (1 - xi), smallest xi in [0,1] with
+
+        E_Q(Q^{n+1}) - E_Q(Q~) <= eta dt D,
+
+        D = nu/2 |curl tu|^2 + l |tu_x|^2_wall
+
+    */
+    real Qn = Qt;
+    if (eta >= 0) {
+        real D;
+        if (fastint) {
+            real[int] w = KXX*tuy[];
+            D = tuy[]'*w;
+            w = KYY*tux[];
+            D += tux[]'*w;
+            w = KXY*tux[];
+            D -= 2*(tuy[]'*w);
+            D *= nu/2;
+        } else {
+            D = nu/2*int2d(Th)((dx(tuy) - dy(tux))^2);
+        }
+
+        // wall term omitted for rigid walls, as in the paper (Section 5)
+        if (l < 1e5) {
+            if (fastint) {
+                real[int] w = MW*tux[];
+                D += l*(tux[]'*w);
+            } else {
+                D += l*int1d(Th, 1, 3)(tux^2);
+            }
+        }
+        real a = Qt - 1.;
+
+        // E_Q(q) = C/4 (q^2 + (2q - Q^n)^2) for BDF2,
+        // E_Q(q) = C/2 q^2 for the Euler step
+        real c2;
+        real c1;
+        real cc;
+        if (first) {
+            c2 = Cq/2*a*a;
+            c1 = Cq*a;
+            cc = Cq/2 - Cq/2*Qt*Qt - eta*dt*D;
+        }
+        else {
+            c2 = 5*Cq/4*a*a;
+            c1 = Cq/4*a*(10 - 4*Q0);
+            cc = Cq/4*(5 - 4*Q0) - Cq/4*(5*Qt*Qt - 4*Qt*Q0) - eta*dt*D;
+        }
+        real xi = 1.;
+        if (abs(a) < 1e-300 || cc <= 0) {// xi = 0...
+            xi = 0.;
+        }
+        else { // ... or xi = the root of the quadratic
+            real disc = c1*c1 - 4*c2*cc;
+            if (disc < 0) {
+                disc = 0;
+            }
+            xi = (-c1 - sqrt(disc))/(2*c2);
+            if (xi < 0) {
+                xi = (-c1 + sqrt(disc))/(2*c2);
+            }
+            xi = min(1., max(0., xi));
+        }
+        Qn = xi*Qt + (1 - xi);
+    }
+
+    // ---- shift the time levels
+    ux1 = ux0;
+    uy1 = uy0;
+    th1 = th0;
+
+    ux0 = ux;
+    uy0 = uy;
+    th0 = th;
+
+    p0 = p;
+    Q1 = Q0;
+    Q0 = Qn;
+
+    ndone = n + 1;
+
+    // updating everything
+    Qtmin = min(Qtmin, Qt);
+    Qtmax = max(Qtmax, Qt);
+    Qmin = min(Qmin, Qn);
+    Qmax = max(Qmax, Qn);
+
+    if (fastint) {
+        real[int] w = MV*ux[];
+        Ek = 0.5*(ux[]'*w);
+        w = MV*uy[];
+        Ek += 0.5*(uy[]'*w);
+    } else {
+        Ek = 0.5*int2d(Th)(ux^2 + uy^2);
+    }
+
+    if (!(Ek < 1e10)) { // also true when Ek is NaN lol
+        nblow = n + 1;
+        fout << "# blow-up at step " << n + 1 << " t = " << (n + 1)*dt << endl;
+        break;
+    }
+
+    // ---- discrete energy E^n and X^n of Theorem 4.2(a) (-X 1)
+    real En = 0.;
+    real Xn = 0.;
+    if (xdiag) {
+        real[int] bq = MP*p0[];
+        Ph wS;
+        wS[] = SM^-1*bq; // wS = S^-1 p
+
+        real pM = int2d(Th)(dx(p0)*dx(wS) + dy(p0)*dy(wS));
+
+        En = 0.25*int2d(Th)(ux0^2 + uy0^2 + (2*ux0 - ux1)^2 + (2*uy0 - uy1)^2) + dt^2/3*pM
+           + A/4*int2d(Th)(th0^2 + (2*th0 - th1)^2) + Cq/4*(Q0^2 + (2*Q0 - Q1)^2);
+
+        Xn = En + dt*Bp*int2d(Th)(10*(dx(th0)^2 + dy(th0)^2) + 2*(dx(th1)^2 + dy(th1)^2));
+
+        if (n >= 1) { // Theorem 4.2(a) is for n >= 1
+            if (Xold >= 0) {
+                dXmax = max(dXmax, Xn - Xold);
+            }
+            Xold = Xn;
+        }
+    }
+
+    // ---- log line every -every steps
+    if ((n + 1) % every == 0) {
+        real Et = 0.5*int2d(Th)(th^2);
+        real Nub = 1 + int1d(Th, 1)(dy(th))/nuden;
+        real Nut = 1 + int1d(Th, 3)(dy(th))/nuden;
+        fout << n + 1 << " " << (n + 1)*dt << " " << Qt << " " << Qn << " " << Ek << " " << Et
+             << " " << Nub << " " << Nut << " " << 1 + int2d(Th)(uy*th)/nuvden;
+        if (xdiag) {
+            fout << " " << En << " " << Xn;
+        }
+        fout << endl;
+    }
+
+    // ---- snapshot every -snap steps
+    if (snapevery > 0) {
+        if ((n + 1) % snapevery == 0) {
+            Vh Tf = Tb + Tcp*(y - ybot) + th0;
+            Wg Tg = Tf;
+            Wg Ug = ux0;
+            Wg Vg = uy0;
+            string sf = out + ".snap" + (10000 + nsnap);
+            nsnap++;
+            {
+                ofstream g(sf);
+                g.precision(6);
+                g << "# t= " << (n + 1)*dt << " nx= " << snx << " ny= " << sny << " L= " << L
+                  << " Tmin= " << Tf[].min << " Tmax= " << Tf[].max << endl;
+                for (int i = 0; i < Wg.ndof; i++) {
+                    g << Tg[][i];
+                    if (snapu) {
+                        g << " " << Ug[][i] << " " << Vg[][i];
+                    }
+                    g << "\n";
+                }
+            }
+        }
+    }
+
+    // ---- live picture and a progress line on the console (-plot N)
+    if (plotevery > 0) {
+        if ((n + 1) % plotevery == 0) {
+            Vh F;
+            if (field == "theta") {
+                F = th;
+            }
+            else {
+                F = Tb + Tcp*(y - ybot) + th;
+            }
+            real Nub = 1 + int1d(Th, 1)(dy(th))/nuden;
+            string title = field + "   t = " + ((n + 1)*dt) + "   Nu = " + Nub + "   Q~ = " + Qt;
+            if (arrows) {
+                plot(F, [ux, uy], fill=true, value=true, nbiso=30, cmm=title, wait=false);
+            }
+            else {
+                plot(F, fill=true, value=true, nbiso=30, cmm=title, wait=false);
+            }
+            cout << "step " << n + 1 << "  t = " << (n + 1)*dt << "  Ekin = " << Ek << "  Nu = " << Nub
+                 << "  Q~ = " << Qt << endl;
+        }
+    }
+}
+
+real cpu2 = clock(); // end of the time loop
+
+if (rparts) {
+    fout << "# RPARTS max_Rkin max_Rth ratio: " << rkinmax << " " << rthmax << " " << rthmax/max(rkinmax, 1e-300) << endl;
+}
+
+if (timing) {
+    fout << "# TIME setup_s loop_s per_step_s: " << cpu1 - cpu0 << " " << cpu2 - cpu1 << " " << (cpu2 - cpu1)/max(1, ndone) << endl;
+}
+
+/*
+  summary: range of Q~ and of the stored Q, final state, largest one-step change of X^n
+*/
+{
+    real Nub = 1 + int1d(Th, 1)(dy(th0))/nuden;
+    real Nut = 1 + int1d(Th, 3)(dy(th0))/nuden;
+    real Nuv = 1 + int2d(Th)(uy0*th0)/nuvden;
+
+    real dXout = 0.;
+
+    if (xdiag) {
+        dXout = dXmax;
+    }
+
+    fout << "# SUMMARY steps Qtilde_min Qtilde_max Q_min Q_max Ekin Nu_bottom Nu_top blowup_step max_dX Nu_vol: " << ndone
+         << " " << Qtmin << " " << Qtmax << " " << Qmin << " " << Qmax << " " << Ek << " " << Nub << " " << Nut
+         << " " << nblow << " " << dXout << " " << Nuv << endl;
+}
+
+// ====== //
+
+/*
+ manufactured solution: errors at the final time
+
+ pressure compared up to its mean!
+*/
+if (mms) {
+
+    real te = nt*dt;
+    Vh eux = ux - mmsux(te);
+    Vh euy = uy - mmsuy(te);
+    Vh eT = th + Tb + Tcp*(y - ybot) - mmsT(te);
+
+    real pm = int2d(Th)(p)/(L*H);
+    real pe = int2d(Th)(mmsp(te))/(L*H);
+    Ph ep = p - pm - (mmsp(te) - pe);
+
+    real l2u = sqrt(int2d(Th)(eux^2 + euy^2));
+    real l2p = sqrt(int2d(Th)(ep^2));
+    real l2T = sqrt(int2d(Th)(eT^2));
+    real liu = max(eux[].linfty, euy[].linfty);
+    real lip = ep[].linfty;
+    real liT = eT[].linfty;
+
+    fout << "# MMS dt, Linf u p T, L2 u p T, |Q~-1|, |Q-1|: " << dt << " " << liu << " " << lip << " " << liT
+         << " " << l2u << " " << l2p << " " << l2T << " " << abs(Qt - 1) << " " << abs(Q0 - 1) << endl;
+
+    // errors against the exact functions (not their interpolants), 9th-order quadrature;
+    // H1 seminorms
+    real Tbase = 0; // T = th + Tb + Tcp (y - ybot)
+
+    real e2u = sqrt(int2d(Th, qforder=9)((ux - mmsux(te))^2 + (uy - mmsuy(te))^2));
+    real e2T = sqrt(int2d(Th, qforder=9)((th + Tb + Tcp*(y - ybot) - mmsT(te))^2));
+    real e2p = sqrt(int2d(Th, qforder=9)((p - pm - (mmsp(te) - pe))^2));
+
+    real h1u = sqrt(int2d(Th, qforder=9)((dx(ux) - mmsuxdx(te))^2 + (dy(ux) - mmsuxdy(te))^2
+                                          + (dx(uy) - mmsuydx(te))^2 + (dy(uy) - mmsuydy(te))^2));
+    real h1T = sqrt(int2d(Th, qforder=9)((dx(th) - mmsTdx(te))^2 + (dy(th) + Tcp - mmsTdy(te))^2));
+
+    real edv = sqrt(int2d(Th, qforder=9)((dx(ux) + dy(uy))^2));
+
+    fout << "# MMS2 dt, exact-function errors L2 u T p, H1-seminorm u T, L2 div u: " << dt << " " << e2u << " " << e2T << " " << e2p
+         << " " << h1u << " " << h1T << " " << edv << endl;
+}
+
+// ====== //
+
+/*
+  final fields: save, or compare with a reference run on the same mesh (e.g. a much smaller time step).
+
+  With -tend 0 -init A -ref B this just compares two saved states.
+*/
+
+real pmean = int2d(Th)(p0)/(L*H); // after the loop the final fields are ux0, uy0, th0, p0
+
+if (savef != "") {
+    ofstream f(savef);
+    f.precision(17);
+    Ph pz = p0 - pmean;
+    f << ux0[] << uy0[] << th0[] << pz[];
+}
+
+if (reff != "") {
+    Vh rx;
+    Vh ry;
+    Vh rt;
+    Ph rp;
+    {
+        ifstream f(reff);
+        f >> rx[];
+        f >> ry[];
+        f >> rt[];
+        f >> rp[];
+    }
+
+    Ph ep = p0 - pmean - rp;
+
+    real du = sqrt(int2d(Th)((ux0 - rx)^2 + (uy0 - ry)^2));
+    real dp = sqrt(int2d(Th)(ep^2));
+    real dT = sqrt(int2d(Th)((th0 - rt)^2));
+
+    fout << "# REF dt, L2 difference u p T from " << reff << ": " << dt << " " << du << " " << dp << " " << dT << endl;
+}
