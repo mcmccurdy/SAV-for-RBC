@@ -1,6 +1,7 @@
 """quick_check.py WORK REFDIR: compare the logs of the quick runs with the logs behind the paper.
 Data rows are compared on the columns both logs have (older logs lack a few later-added columns); tagged lines
-(# MMS, # MMS2, # REF, RAC, EIG) are compared number by number. Relative tolerance 1e-6."""
+(# MMS, # MMS2, # REF, RAC, EIG) are compared number by number. Relative tolerance 1e-6; two numbers that are
+both below 1e-12 in size (round-off, e.g. the residual of the secant method) count as equal."""
 import os, re, sys
 
 TOL = 1e-6
@@ -30,6 +31,8 @@ def parse(path):
 
 
 def rel(a, b):
+    if max(abs(a), abs(b)) < 1e-12:   # both at round-off level
+        return 0.0
     return abs(a - b) / max(abs(b), 1e-12)
 
 
@@ -37,6 +40,8 @@ def main(work, ref):
     ok = True
     for root, _, files in os.walk(ref):
         for f in sorted(files):
+            if f.startswith('.'):   # hidden files such as .DS_Store (macOS Finder)
+                continue
             r = os.path.join(root, f); name = os.path.relpath(r, ref); w = os.path.join(work, name)
             if not os.path.exists(w):
                 print(f'FAIL  {name}: not produced'); ok = False; continue
